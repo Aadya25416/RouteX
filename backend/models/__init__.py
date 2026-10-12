@@ -4,7 +4,17 @@ from backend.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from backend.models.users import User
 from backend.models.districts import District
 from backend.models.roads import RoadNode, RoadSegment, RoadSegmentState, RoadStatus
-from backend.models.incidents import Incident, IncidentEvidence
+from backend.models.incidents import (
+    Incident,
+    IncidentEvidence,
+    IncidentRoadAssociation,
+    IncidentType,
+    IncidentSeverity,
+    IncidentStatus,
+    AssociationType,
+    AssessedImpact,
+    IncidentSource,
+)
 from backend.models.logistics import Vehicle, VehicleLocation, Delivery, Trip
 from backend.models.routing import RouteRecommendation
 from backend.models.risk import RiskPrediction
@@ -23,6 +33,13 @@ __all__ = [
     "RoadStatus",
     "Incident",
     "IncidentEvidence",
+    "IncidentRoadAssociation",
+    "IncidentType",
+    "IncidentSeverity",
+    "IncidentStatus",
+    "AssociationType",
+    "AssessedImpact",
+    "IncidentSource",
     "Vehicle",
     "VehicleLocation",
     "Delivery",

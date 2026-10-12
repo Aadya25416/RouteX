@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     OSM_NETWORK_TYPE: str = "drive"
     OSM_DATA_DIR: str = "data/osm"
 
+    # Evidence Storage & Incident Management (Phase 2)
+    MEDIA_DIR: str = "data/evidence"
+    MAX_UPLOAD_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB
+    ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
+    INCIDENT_ROAD_MATCH_RADIUS_M: float = 150.0  # Search radius in meters
+    REDIS_STREAM_INCIDENTS: str = "events:incidents"
+    REDIS_STREAM_ROADS: str = "events:roads"
+
     @field_validator("CORRIDOR_MIN_LAT", "CORRIDOR_MAX_LAT")
     @classmethod
     def validate_latitude(cls, v: float) -> float:

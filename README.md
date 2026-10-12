@@ -160,12 +160,87 @@ uv run python -m backend.scripts.validate_graph
 | `GET` | `/api/v1/roads` | Bounded road segment listing with pagination and bbox filter |
 | `GET` | `/api/v1/roads/{id}` | Single canonical road segment details and LineString coordinates |
 | `GET` | `/api/v1/roads/geojson` | GeoJSON FeatureCollection bounded by map coordinates |
+| `POST` | `/api/v1/incidents` | Create geotagged field incident with PostGIS road candidate matching |
+| `GET` | `/api/v1/incidents` | List incidents with pagination and type/severity/status/bbox filters |
+| `GET` | `/api/v1/incidents/{id}` | Retrieve single incident details, road associations, and evidence metadata |
+| `POST` | `/api/v1/incidents/{id}/review` | Dispatcher/Admin begins official review (`UNDER_REVIEW`) |
+| `POST` | `/api/v1/incidents/{id}/confirm` | Dispatcher/Admin confirms incident, verifying road segments & updating operational state |
+| `POST` | `/api/v1/incidents/{id}/reject` | Dispatcher/Admin rejects incident with mandatory reason |
+| `POST` | `/api/v1/incidents/{id}/resolve` | Dispatcher/Admin resolves incident (retains `UNKNOWN` unless verified clearance) |
+| `POST` | `/api/v1/incidents/{id}/evidence` | Upload photographic evidence with magic-byte validation |
+| `GET` | `/api/v1/incidents/{id}/evidence` | List evidence metadata for an incident |
+| `GET` | `/api/v1/incidents/{id}/evidence/{ref}/download` | Protected download of uploaded evidence file |
 
 Interactive Swagger documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
-## 8. Data Conventions & Guardrails
+## 8. Phase 2 — Field Incident Management Workflow
+
+### Incident Lifecycle
+```
+SUBMITTED ──► UNDER_REVIEW ──► CONFIRMED ──► RESOLVED
+    │                │
+    ▼                ▼
+ REJECTED         REJECTED
+```
+
+1. **Submission**: Authorized field officers submit geotagged reports. PostGIS (`ST_DWithin` & `ST_Distance`) identifies candidate road segments within a configurable radius (`INCIDENT_ROAD_MATCH_RADIUS_M=150.0`). Idempotency is guaranteed via `client_report_id`.
+2. **Review & Confirmation**: Dispatchers/Administrators review and confirm incidents, specifying assessed impacts (`BLOCKED`, `RESTRICTED`, `AT_RISK`) per affected road segment.
+3. **Road State Aggregation Rule**: When an incident is confirmed, affected road states update according to strict precedence: `BLOCKED` > `RESTRICTED` > `AT_RISK`. Resolving one incident accounts for all remaining active confirmed disruptions; if no active disruptions remain without verified clearance, status reverts to `UNKNOWN`, never erroneously `OPEN`.
+4. **Evidence Storage & Protection**: Uploaded images are validated via file header magic bytes (JPEG, PNG, WebP) and size limits (15 MB), stored locally under `data/evidence/` with server-controlled filenames, and retrieved only through authenticated endpoints.
+5. **Durable Events & Audit Logs**: State transitions generate immutable `audit_logs` in PostgreSQL and publish standardized events (`incident.created`, `incident.confirmed`, `incident.rejected`, `incident.resolved`, `road.status_changed`, `incident.evidence_uploaded`) to Redis Streams with error-resilient fallback.
+
+### Verification Example Commands
+
+```bash
+# 1. Submit an incident as field officer
+curl -X POST http://localhost:8000/api/v1/incidents \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" \
+  -d '{
+    "incident_type": "LANDSLIDE",
+    "severity": "HIGH",
+    "latitude": 26.15,
+    "longitude": 91.75,
+    "description": "Massive landslide blocking highway",
+    "observed_at": "2026-10-12T14:00:00Z",
+    "client_report_id": "report_guwahati_001"
+  }'
+
+# 2. Upload evidence photograph
+curl -X POST http://localhost:8000/api/v1/incidents/{INCIDENT_ID}/evidence \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" \
+  -F "file=@photo.jpg;type=image/jpeg"
+
+# 3. Confirm incident as dispatcher and block segment
+curl -X POST http://localhost:8000/api/v1/incidents/{INCIDENT_ID}/confirm \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -d '{
+    "review_notes": "Ground verification complete by patrol team",
+    "road_impacts": [
+      {"road_segment_id": "edge_4972479207_4972479335_0", "assessed_impact": "BLOCKED"}
+    ]
+  }'
+
+# 4. Resolve incident
+curl -X POST http://localhost:8000/api/v1/incidents/{INCIDENT_ID}/resolve \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -d '{
+    "resolution_notes": "Debris cleared by excavator",
+    "verified_clearance": false
+  }'
+```
+
+---
+
+## 9. Data Conventions & Guardrails
 
 1. **Persistent Source of Truth**: PostgreSQL with PostGIS is the sole store of record for road geometry, incidents, vehicles, and deliveries. Redis stores transient state and events.
 2. **Initial Status**: Imported roads default to `UNKNOWN`. Never label roads `OPEN` without operational evidence.
@@ -175,7 +250,7 @@ Interactive Swagger documentation is available at [http://localhost:8000/docs](h
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 - **Port Conflict on 55432 or 56379**: Change `POSTGRES_PORT` or `REDIS_PORT` in your `.env` file.
 - **Overpass API Rate Limits**: When importing large study corridors, use `--cache-file path/to/file.graphml` to cache the downloaded graph locally.

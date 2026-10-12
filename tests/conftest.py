@@ -27,3 +27,24 @@ async def db_session() -> AsyncSession:
     """Async database session fixture."""
     async with AsyncSessionLocal() as session:
         yield session
+
+
+@pytest.fixture
+def field_officer_headers() -> dict[str, str]:
+    return {"X-User-Role": "field_officer", "X-User-Email": "officer1@nerlink.org"}
+
+
+@pytest.fixture
+def dispatcher_headers() -> dict[str, str]:
+    return {"X-User-Role": "dispatcher", "X-User-Email": "dispatcher1@nerlink.org"}
+
+
+@pytest.fixture
+def admin_headers() -> dict[str, str]:
+    return {"X-User-Role": "admin", "X-User-Email": "admin1@nerlink.org"}
+
+
+@pytest.fixture
+def driver_headers() -> dict[str, str]:
+    return {"X-User-Role": "driver", "X-User-Email": "driver1@nerlink.org"}
+
