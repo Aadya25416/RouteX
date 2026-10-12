@@ -15,8 +15,18 @@ from backend.models.incidents import (
     AssessedImpact,
     IncidentSource,
 )
-from backend.models.logistics import Vehicle, VehicleLocation, Delivery, Trip
-from backend.models.routing import RouteRecommendation
+from backend.models.logistics import (
+    Vehicle,
+    VehicleLocation,
+    Delivery,
+    Trip,
+    VehicleStatus,
+    CargoType,
+    DeliveryPriority,
+    DeliveryStatus,
+    TripStatus,
+)
+from backend.models.routing import RouteRecommendation, RouteMode
 from backend.models.risk import RiskPrediction
 from backend.models.observations import WeatherObservation, SatelliteEvent
 from backend.models.audit import Alert, AuditLog
@@ -44,10 +54,17 @@ __all__ = [
     "VehicleLocation",
     "Delivery",
     "Trip",
+    "VehicleStatus",
+    "CargoType",
+    "DeliveryPriority",
+    "DeliveryStatus",
+    "TripStatus",
     "RouteRecommendation",
+    "RouteMode",
     "RiskPrediction",
     "WeatherObservation",
     "SatelliteEvent",
     "Alert",
     "AuditLog",
 ]
+

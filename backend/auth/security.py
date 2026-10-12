@@ -7,10 +7,12 @@ from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from backend.config import get_settings
 from backend.database import get_async_session
 from backend.models.users import User
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 # Optional HTTPBearer so missing headers return 401 cleanly with custom messages
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -26,12 +28,23 @@ async def get_current_user(
     """
     Resolves the current authenticated user from Bearer token or development headers.
     Verifies that the user exists and is active.
+    In non-development/test environments, development identity headers are rejected.
     """
+    is_dev_env = settings.APP_ENV in ["development", "test"]
+
+    # Security check: disallow dev headers in staging/production
+    if not is_dev_env and (x_user_role or x_user_id or x_user_email):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Development identity headers are prohibited outside development/test environments. Use standard Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token_val = None
     if auth_creds and auth_creds.credentials:
         token_val = auth_creds.credentials.strip()
 
-    user_identifier = token_val or x_user_id or x_user_email
+    user_identifier = token_val or (x_user_id or x_user_email if is_dev_env else None)
 
     if not user_identifier:
         raise HTTPException(

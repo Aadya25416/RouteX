@@ -240,17 +240,95 @@ curl -X POST http://localhost:8000/api/v1/incidents/{INCIDENT_ID}/resolve \
 
 ---
 
-## 9. Data Conventions & Guardrails
+## 9. Logistics, Vehicle Tracking & Routing Core (Phase 3)
 
-1. **Persistent Source of Truth**: PostgreSQL with PostGIS is the sole store of record for road geometry, incidents, vehicles, and deliveries. Redis stores transient state and events.
-2. **Initial Status**: Imported roads default to `UNKNOWN`. Never label roads `OPEN` without operational evidence.
-3. **Safety Score**: Bounded between `0` and `100`, where `100` is safer. Disruption probability is a separate `0.0–1.0` value.
-4. **Authoritative Blockages**: A confirmed road closure cannot be reopened or overridden by an ML safety score.
-5. **Attribution**: Road network data © OpenStreetMap contributors under the Open Database License (ODbL).
+Phase 3 provides end-to-end logistics delivery dispatch, vehicle tracking, directed graph routing, and disruption-aware rerouting.
+
+### Core Workflows
+
+1. **Vehicle Management**: Register and manage fleet vehicles (`AVAILABLE`, `ASSIGNED`, `IN_TRANSIT`, `MAINTENANCE`, `DECOMMISSIONED`) with unique registration plates and fleet codes.
+2. **Delivery Consignments**: Register supplies (`MEDICINE`, `FOOD`, `AGRICULTURAL_PRODUCE`, `CONSTRUCTION_MATERIALS`, `GENERAL`) with priority levels (`LOW`, `NORMAL`, `HIGH`, `CRITICAL`) and origin/destination coordinates.
+3. **Trips & Vehicle Assignment**: Connect an available vehicle to a delivery. Atomically reserves vehicle and delivery, and computes an initial route recommendation.
+4. **Routing Engine**:
+   - **Mode A (`SHORTEST_DISTANCE`)**: Minimizes eligible physical distance (in meters). Excludes confirmed `BLOCKED` roads, penalizes `AT_RISK` (1.5x) and `RESTRICTED` (2.0x) roads.
+   - **Mode B (`FASTEST_SAFE`)**: Minimizes travel time (in seconds) derived from OSM speed limits with safety risk multipliers (`AT_RISK` 2.5x, `RESTRICTED` 3.0x, `UNKNOWN` 1.2x).
+   - **Road State Handling**: Confirmed `BLOCKED` roads are unconditionally excluded. `UNKNOWN` roads disclose uncertainty in `safety_summary.safety_status="UNVERIFIED"` with explicit cautionary disclaimers. If `require_verified_safe=True` is requested, unverified roads are excluded, returning `NO_SAFE_ROUTE` if no verified path exists.
+5. **GPS Tracking Ingestion**: Ingests vehicle GPS fixes (`/api/v1/vehicles/{id}/locations`). Enforces timestamp monotonicity, snaps coordinates to nearest road segments, caches the latest fix in Redis (`vehicle:{id}:latest_location`), and persists historical breadcrumbs in PostgreSQL.
+6. **Automated Disruption Rerouting**: When an incident confirms a road as `BLOCKED`, the system scans active trips (`PLANNED`, `IN_TRANSIT`, `PAUSED`). If a trip's route contains the blocked segment, it automatically evaluates and persists an alternative route avoiding the closure, or flags the failure clearly if no safe alternative is open.
+
+### Verification Example Commands
+
+```bash
+# 1. Register a vehicle
+curl -X POST http://localhost:8000/api/v1/vehicles \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -d '{
+    "registration_number": "AS-01-BX-9021",
+    "vehicle_code": "MED-TRK-01",
+    "vehicle_type": "refrigerated_truck",
+    "capacity_kg": 7500.0
+  }'
+
+# 2. Create an essential medical delivery
+curl -X POST http://localhost:8000/api/v1/deliveries \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -d '{
+    "tracking_code": "DEL-MED-2026-001",
+    "cargo_type": "MEDICINE",
+    "priority": "CRITICAL",
+    "origin_address": "Guwahati Central Medical Depot",
+    "origin_lat": 26.14365,
+    "origin_lon": 91.74172,
+    "destination_address": "Dispur Substation Clinic",
+    "destination_lat": 26.14249,
+    "destination_lon": 91.74202
+  }'
+
+# 3. Plan a route ad-hoc
+curl -X POST http://localhost:8000/api/v1/routes/plan \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -d '{
+    "origin_lat": 26.14365,
+    "origin_lon": 91.74172,
+    "destination_lat": 26.14249,
+    "destination_lon": 91.74202,
+    "mode": "FASTEST_SAFE"
+  }'
+
+# 4. Ingest GPS tracking ping
+curl -X POST http://localhost:8000/api/v1/vehicles/{VEHICLE_ID}/locations \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: driver" \
+  -H "X-User-Email: driver@nerlink.org" \
+  -d '{
+    "latitude": 26.14365,
+    "longitude": 91.74172,
+    "speed_kmh": 42.5,
+    "heading_deg": 185.0,
+    "recorded_at": "2026-10-12T16:00:00Z"
+  }'
+```
 
 ---
 
-## 10. Troubleshooting
+## 10. Data Conventions & Guardrails
+
+1. **Persistent Source of Truth**: PostgreSQL with PostGIS is the sole store of record for road geometry, incidents, vehicles, deliveries, and trips. Redis stores transient state, latest GPS positions, and streams.
+2. **Initial Status**: Imported roads default to `UNKNOWN`. Never label roads `OPEN` without operational evidence.
+3. **Safety Score**: Bounded between `0` and `100`, where `100` is safer. Disruption probability is a separate `0.0–1.0` value.
+4. **Authoritative Blockages**: A confirmed road closure cannot be reopened or overridden by an ML safety score.
+5. **No Speculative Live Traffic**: Travel times derive from OSM physical road class base speeds and documented safety penalties; no external live traffic sensors or toll costs are claimed until real telemetry feeds exist.
+6. **Attribution**: Road network data © OpenStreetMap contributors under the Open Database License (ODbL).
+
+---
+
+## 11. Troubleshooting
 
 - **Port Conflict on 55432 or 56379**: Change `POSTGRES_PORT` or `REDIS_PORT` in your `.env` file.
 - **Overpass API Rate Limits**: When importing large study corridors, use `--cache-file path/to/file.graphml` to cache the downloaded graph locally.

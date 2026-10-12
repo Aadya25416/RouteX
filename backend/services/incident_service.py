@@ -374,6 +374,16 @@ class IncidentService:
                 },
             )
 
+        # Trigger disruption evaluation for active trips
+        blocked_seg_ids = [seg_id for seg_id, old_st, new_st in status_changes if new_st == RoadStatus.BLOCKED.value]
+        if blocked_seg_ids:
+            try:
+                from backend.services.logistics_service import LogisticsService
+                logistics_service = LogisticsService(session=self.session, event_publisher=self.publisher)
+                await logistics_service.check_and_reroute_disrupted_trips(blocked_seg_ids, actor_id=reviewer_id)
+            except Exception as exc:
+                logger.error(f"Error evaluating disrupted trips during incident confirmation: {exc}")
+
         return await self.get_incident_by_id(incident_id)
 
     async def reject_incident(
