@@ -67,3 +67,14 @@ data/media/
 docker-data/
 postgres-data/
 redis-data/
+
+# ─── Frontend (Next.js) ───────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/coverage/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+frontend/.env.local
+frontend/.env.*.local
