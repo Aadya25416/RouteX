@@ -9,10 +9,27 @@ if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 }
 
-interface RoadMapProps {
-  backendInfo: BackendInfoResponse | null;
-  roadsData: RoadFeatureCollection | null;
+export interface RoadMapProps {
+  backendInfo?: BackendInfoResponse | null;
+  roadsData?: RoadFeatureCollection | null;
   onSelectRoad?: (road: RoadFeatureProperties | null) => void;
+  routeCoordinates?: [number, number][];
+  hazardMarker?: {
+    lngLat: [number, number];
+    label: string;
+    type?: string;
+  } | null;
+  stopMarkers?: {
+    lngLat: [number, number];
+    label: string;
+    isDestination?: boolean;
+    isNext?: boolean;
+  }[];
+  customCenter?: [number, number];
+  customZoom?: number;
+  hideNavControls?: boolean;
+  onMapClick?: (coords: [number, number]) => void;
+  className?: string;
 }
 
 const OSM_STYLE: maplibregl.StyleSpecification = {
@@ -72,15 +89,33 @@ function fitCorridorBounds(
   );
 }
 
-export default function RoadMap({ backendInfo, roadsData, onSelectRoad }: RoadMapProps) {
+export default function RoadMap({
+  backendInfo,
+  roadsData,
+  onSelectRoad,
+  routeCoordinates,
+  hazardMarker,
+  stopMarkers,
+  customCenter,
+  customZoom,
+  hideNavControls,
+  onMapClick,
+  className,
+}: RoadMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const activePopupRef = useRef<maplibregl.Popup | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const onSelectRoadRef = useRef(onSelectRoad);
+  const onMapClickRef = useRef(onMapClick);
 
   useEffect(() => {
     onSelectRoadRef.current = onSelectRoad;
   }, [onSelectRoad]);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   const addOrUpdateRoadSource = useCallback((map: maplibregl.Map, data: RoadFeatureCollection | null) => {
     const emptyCollection: RoadFeatureCollection = {
@@ -256,8 +291,8 @@ export default function RoadMap({ backendInfo, roadsData, onSelectRoad }: RoadMa
     maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 
     // Initial center fallback (Guwahati coordinates)
-    const initialCenter: [number, number] = [91.7362, 26.1445];
-    const initialZoom = 9;
+    const initialCenter: [number, number] = customCenter || [91.7362, 26.1445];
+    const initialZoom = customZoom ?? 9;
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
@@ -271,17 +306,28 @@ export default function RoadMap({ backendInfo, roadsData, onSelectRoad }: RoadMa
 
     mapInstanceRef.current = map;
 
-    // Add navigation controls (zoom in/out, compass)
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    // Add navigation controls (zoom in/out, compass) if not hidden
+    if (!hideNavControls) {
+      map.addControl(new maplibregl.NavigationControl(), "top-right");
+    }
+
+    // Map click handler (for selecting location or coordinate inspect)
+    map.on("click", (e) => {
+      if (onMapClickRef.current) {
+        onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
+      }
+    });
 
     return () => {
       if (activePopupRef.current) {
         activePopupRef.current.remove();
       }
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, []);
+  }, [customCenter, customZoom, hideNavControls]);
 
   // Handle bounds update when backend info arrives
   useEffect(() => {
@@ -305,16 +351,145 @@ export default function RoadMap({ backendInfo, roadsData, onSelectRoad }: RoadMa
     if (!map) return;
 
     if (map.isStyleLoaded()) {
-      addOrUpdateRoadSource(map, roadsData);
+      addOrUpdateRoadSource(map, roadsData ?? null);
     } else {
       map.once("load", () => {
-        addOrUpdateRoadSource(map, roadsData);
+        addOrUpdateRoadSource(map, roadsData ?? null);
       });
     }
   }, [roadsData, addOrUpdateRoadSource]);
 
+  // Handle optional route coordinates polyline
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !routeCoordinates || routeCoordinates.length < 2) return;
+
+    const renderRoute = () => {
+      const geojson: GeoJSON.Feature<GeoJSON.LineString> = {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: routeCoordinates,
+        },
+      };
+
+      const existingSource = map.getSource("driver-route-source") as maplibregl.GeoJSONSource | undefined;
+      if (existingSource) {
+        existingSource.setData(geojson);
+      } else {
+        map.addSource("driver-route-source", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        // Route casing for contrast
+        map.addLayer({
+          id: "driver-route-casing",
+          type: "line",
+          source: "driver-route-source",
+          paint: {
+            "line-color": "#0d3b2b",
+            "line-width": 8,
+            "line-opacity": 0.45,
+          },
+        });
+
+        // Main vibrant green route line matching reference design
+        map.addLayer({
+          id: "driver-route-main",
+          type: "line",
+          source: "driver-route-source",
+          layout: {
+            "line-cap": "round",
+            "line-join": "round",
+          },
+          paint: {
+            "line-color": "#16a779",
+            "line-width": 5,
+          },
+        });
+      }
+
+      // Smoothly fit corridor to route
+      const bounds = new maplibregl.LngLatBounds();
+      routeCoordinates.forEach((coord) => bounds.extend(coord));
+      map.fitBounds(bounds, { padding: 70, maxZoom: 12, duration: 800 });
+    };
+
+    if (map.isStyleLoaded()) {
+      renderRoute();
+    } else {
+      map.once("load", renderRoute);
+    }
+  }, [routeCoordinates]);
+
+  // Handle stop markers & hazard marker
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Clear old markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const attachMarkers = () => {
+      // 1. Stop markers
+      if (stopMarkers) {
+        stopMarkers.forEach((stop) => {
+          const el = document.createElement("div");
+          el.className = "rx-map-stop-marker";
+          el.style.cssText =
+            "display: flex; align-items: center; gap: 6px; background: white; padding: 4px 8px; border-radius: 9999px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1.5px solid #16a779; font-size: 11px; font-weight: 700; color: #193b32; cursor: pointer; white-space: nowrap;";
+
+          const dot = document.createElement("span");
+          dot.style.cssText = "width: 8px; height: 8px; border-radius: 50%; background: #16a779;";
+          el.appendChild(dot);
+
+          const text = document.createElement("span");
+          text.innerText = stop.label;
+          el.appendChild(text);
+
+          const marker = new maplibregl.Marker({ element: el })
+            .setLngLat(stop.lngLat)
+            .addTo(map);
+
+          markersRef.current.push(marker);
+        });
+      }
+
+      // 2. Hazard marker (e.g. ⚠️ Landslide Risk near Bomdila)
+      if (hazardMarker) {
+        const hEl = document.createElement("div");
+        hEl.className = "rx-map-hazard-marker";
+        hEl.style.cssText =
+          "display: flex; align-items: center; gap: 5px; background: #FFF3E0; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(230,81,0,0.25); border: 1.5px solid #F57C00; font-size: 11px; font-weight: 700; color: #E65100; cursor: pointer; white-space: nowrap;";
+
+        const icon = document.createElement("span");
+        icon.innerText = "⚠️";
+        hEl.appendChild(icon);
+
+        const text = document.createElement("span");
+        text.innerText = hazardMarker.label;
+        hEl.appendChild(text);
+
+        const hMarker = new maplibregl.Marker({ element: hEl })
+          .setLngLat(hazardMarker.lngLat)
+          .addTo(map);
+
+        markersRef.current.push(hMarker);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      attachMarkers();
+    } else {
+      map.once("load", attachMarkers);
+    }
+  }, [stopMarkers, hazardMarker]);
+
   return (
-    <div className="relative w-full h-full min-h-[500px]">
+    <div className={className || "relative w-full h-full min-h-[500px]"}>
       <div ref={mapContainerRef} className="w-full h-full absolute inset-0" />
     </div>
   );
