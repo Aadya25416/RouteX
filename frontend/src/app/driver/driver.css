@@ -1,0 +1,322 @@
+/* Scoped Driver Experience Styles (RouteX / NER-LINK) */
+
+:root {
+  --rx-driver-bg: #F1F4E8;
+  --rx-driver-card: #FFFFFF;
+  --rx-driver-card-soft: #F9FAF6;
+  --rx-driver-border: #DCE5D8;
+  --rx-driver-border-subtle: #E8EFE5;
+  --rx-driver-text-main: #193B32;
+  --rx-driver-text-sub: #71877D;
+  --rx-driver-text-muted: #8F9E97;
+  --rx-driver-primary: #12432A;
+  --rx-driver-primary-hover: #0d3420;
+  --rx-driver-emerald: #16A779;
+  --rx-driver-mint: #DDF4E8;
+  --rx-driver-mint-border: #B7E4CD;
+  --rx-driver-amber: #F4B64A;
+  --rx-driver-amber-bg: #FFF8EB;
+  --rx-driver-amber-border: #FCE1B6;
+  --rx-driver-orange: #F07838;
+  --rx-driver-red: #DC4848;
+  --rx-driver-red-bg: #FEEEEE;
+  --rx-driver-gray: #89939A;
+  --rx-driver-shadow: 0 1px 3px rgba(25, 59, 50, 0.05), 0 4px 12px rgba(25, 59, 50, 0.03);
+  --rx-driver-shadow-md: 0 4px 14px rgba(25, 59, 50, 0.07);
+}
+
+.rx-driver-root {
+  background-color: var(--rx-driver-bg);
+  color: var(--rx-driver-text-main);
+  min-height: 100vh;
+  display: flex;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Sidebar */
+.rx-driver-sidebar {
+  width: 220px;
+  background-color: #FAFBF7;
+  border-right: 1px solid var(--rx-driver-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 14px;
+  flex-shrink: 0;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.rx-driver-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 18px 10px;
+  text-decoration: none;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rx-driver-logo-name {
+  color: #12432A;
+}
+
+.rx-driver-logo-x {
+  color: #16A779;
+}
+
+.rx-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rx-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rx-driver-text-sub);
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.rx-sidebar-link:hover {
+  background-color: rgba(221, 244, 232, 0.5);
+  color: var(--rx-driver-text-main);
+}
+
+.rx-sidebar-link.active {
+  background-color: var(--rx-driver-mint);
+  color: #12432A;
+  font-weight: 700;
+  border-color: var(--rx-driver-mint-border);
+}
+
+.rx-sidebar-link.active svg {
+  color: #16A779;
+  stroke: #16A779;
+}
+
+.rx-sidebar-bottom {
+  border-top: 1px solid var(--rx-driver-border-subtle);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Main Content Area */
+.rx-driver-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--rx-driver-bg);
+}
+
+/* Topbar */
+.rx-driver-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background-color: transparent;
+  gap: 16px;
+  z-index: 30;
+}
+
+.rx-topbar-search {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+.rx-topbar-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  background-color: var(--rx-driver-card);
+  border: 1px solid var(--rx-driver-border);
+  border-radius: 9999px;
+  font-size: 13px;
+  color: var(--rx-driver-text-main);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease;
+}
+
+.rx-topbar-search-input:focus {
+  border-color: var(--rx-driver-emerald);
+}
+
+.rx-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--rx-driver-text-muted);
+  pointer-events: none;
+}
+
+.rx-search-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--rx-driver-text-muted);
+  pointer-events: none;
+}
+
+.rx-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rx-bell-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--rx-driver-card);
+  border: 1px solid var(--rx-driver-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rx-driver-text-sub);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.rx-bell-btn:hover {
+  background-color: #f5f8f3;
+}
+
+.rx-bell-badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rx-driver-red);
+}
+
+.rx-driver-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rx-driver-card);
+  border: 1px solid var(--rx-driver-border);
+  padding: 4px 10px 4px 4px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rx-driver-text-main);
+}
+
+.rx-driver-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #193B32;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Page content wrappers */
+.rx-driver-page {
+  padding: 6px 28px 28px 28px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card base */
+.rx-card {
+  background-color: var(--rx-driver-card);
+  border: 1px solid var(--rx-driver-border);
+  border-radius: 18px;
+  box-shadow: var(--rx-driver-shadow);
+  padding: 20px;
+}
+
+/* Primary Button */
+.rx-btn-primary {
+  background-color: var(--rx-driver-primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9999px;
+  padding: 9px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.rx-btn-primary:hover {
+  background-color: var(--rx-driver-primary-hover);
+  transform: translateY(-1px);
+}
+
+.rx-btn-outline {
+  background-color: var(--rx-driver-card);
+  color: var(--rx-driver-text-main);
+  border: 1px solid var(--rx-driver-border);
+  border-radius: 9999px;
+  padding: 9px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.rx-btn-outline:hover {
+  background-color: #f7faf5;
+  border-color: #c4d4be;
+}
+
+/* Mobile adjustments */
+@media (max-width: 900px) {
+  .rx-driver-sidebar {
+    width: 68px;
+    padding: 16px 8px;
+  }
+  .rx-driver-sidebar .rx-sidebar-text,
+  .rx-driver-logo-name,
+  .rx-driver-logo-x {
+    display: none;
+  }
+  .rx-sidebar-link {
+    justify-content: center;
+    padding: 10px;
+  }
+  .rx-driver-topbar {
+    padding: 12px 16px;
+  }
+  .rx-driver-page {
+    padding: 6px 16px 20px 16px;
+  }
+}
