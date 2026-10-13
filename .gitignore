@@ -55,6 +55,8 @@ coverage.xml
 cache/
 data/cache/
 data/osm/
+data/evidence/
+data/media/
 *.osm
 *.pbf
 *.geojson.cache

@@ -18,9 +18,9 @@ class GraphValidator:
         self.session = session or Session(sync_engine)
         self._own_session = session is None
 
-    def build_networkx_graph(self) -> nx.DiGraph:
-        """Constructs a directed graph directly from PostgreSQL/PostGIS tables."""
-        G = nx.DiGraph()
+    def build_networkx_graph(self) -> nx.MultiDiGraph:
+        """Constructs a directed multigraph directly from PostgreSQL/PostGIS tables."""
+        G = nx.MultiDiGraph()
 
         # Load nodes
         nodes = self.session.execute(select(RoadNode)).scalars().all()
@@ -47,6 +47,7 @@ class GraphValidator:
             G.add_edge(
                 seg.u_node_id,
                 seg.v_node_id,
+                key=seg.key,
                 id=seg.id,
                 osm_way_id=seg.osm_way_id,
                 length_m=seg.length_m,
@@ -87,8 +88,10 @@ class GraphValidator:
         # For one-way edges, ensure reverse edge does not exist with the same oneway tag
         oneway_violations = 0
         for u, v, data in oneway_edges:
-            if G.has_edge(v, u) and G[v][u].get("id") == data.get("id"):
-                oneway_violations += 1
+            if G.has_edge(v, u):
+                for rev_data in G[v][u].values():
+                    if rev_data.get("id") == data.get("id"):
+                        oneway_violations += 1
 
         # Test sample path within the largest component
         path_test = None
