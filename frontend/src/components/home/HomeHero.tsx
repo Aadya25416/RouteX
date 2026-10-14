@@ -88,8 +88,13 @@ export default function HomeHero() {
               <span className="feature-label">Reliable Supply Chains</span>
             </div>
           </div>
+        </div>
 
-          {/* Lower-Left Decorative Metric Card */}
+        {/* Right Column: Interactive Map Visualization */}
+        <div className="home-hero-right">
+          <HeroMapIllustration />
+
+          {/* Floating Metric Card matching the light mockup */}
           <div className="home-metric-card" aria-label="Route Coverage Metric">
             <div className="metric-header">
               <span className="metric-label">Route coverage (illustrative)</span>
@@ -107,32 +112,27 @@ export default function HomeHero() {
                 {/* Sine Trend Line */}
                 <path
                   d="M0 24 Q 25 22 45 16 T 90 8 T 140 6"
-                  stroke="#8FCFC0"
-                  strokeWidth="1.8"
+                  stroke="#16A779"
+                  strokeWidth="2"
                   fill="none"
                 />
                 {/* Volume Activity Bars */}
-                <rect x="40" y="20" width="2" height="6" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="48" y="18" width="2" height="8" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="56" y="16" width="2" height="10" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="64" y="14" width="2" height="12" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="72" y="12" width="2" height="14" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="80" y="15" width="2" height="11" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="88" y="10" width="2" height="16" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="96" y="13" width="2" height="13" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="104" y="9" width="2" height="17" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="112" y="7" width="2" height="19" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="120" y="11" width="2" height="15" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="128" y="8" width="2" height="18" fill="rgba(143, 207, 192, 0.4)" />
-                <rect x="136" y="5" width="2" height="21" fill="rgba(143, 207, 192, 0.4)" />
+                <rect x="40" y="20" width="2" height="6" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="48" y="18" width="2" height="8" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="56" y="16" width="2" height="10" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="64" y="14" width="2" height="12" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="72" y="12" width="2" height="14" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="80" y="15" width="2" height="11" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="88" y="10" width="2" height="16" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="96" y="13" width="2" height="13" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="104" y="9" width="2" height="17" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="112" y="7" width="2" height="19" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="120" y="11" width="2" height="15" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="128" y="8" width="2" height="18" fill="rgba(22, 167, 121, 0.45)" />
+                <rect x="136" y="5" width="2" height="21" fill="rgba(22, 167, 121, 0.45)" />
               </svg>
             </div>
           </div>
-        </div>
-
-        {/* Right Column: Interactive Map Visualization */}
-        <div className="home-hero-right">
-          <HeroMapIllustration />
         </div>
       </div>
     </section>

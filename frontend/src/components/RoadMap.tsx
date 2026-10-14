@@ -437,13 +437,18 @@ export default function RoadMap({
       // 1. Stop markers
       if (stopMarkers) {
         stopMarkers.forEach((stop) => {
+          const isDest = Boolean(stop.isDestination);
+          const borderColor = isDest ? "#ef4444" : "#16a779";
+          const dotColor = isDest ? "#ef4444" : "#16a779";
+          const textColor = isDest ? "#991b1b" : "#193b32";
+
           const el = document.createElement("div");
           el.className = "rx-map-stop-marker";
           el.style.cssText =
-            "display: flex; align-items: center; gap: 6px; background: white; padding: 4px 8px; border-radius: 9999px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1.5px solid #16a779; font-size: 11px; font-weight: 700; color: #193b32; cursor: pointer; white-space: nowrap;";
+            `display: flex; align-items: center; gap: 6px; background: white; padding: 4px 8px; border-radius: 9999px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1.5px solid ${borderColor}; font-size: 11px; font-weight: 700; color: ${textColor}; cursor: pointer; white-space: nowrap;`;
 
           const dot = document.createElement("span");
-          dot.style.cssText = "width: 8px; height: 8px; border-radius: 50%; background: #16a779;";
+          dot.style.cssText = `width: 8px; height: 8px; border-radius: 50%; background: ${dotColor};`;
           el.appendChild(dot);
 
           const text = document.createElement("span");

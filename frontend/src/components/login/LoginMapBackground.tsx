@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
@@ -18,6 +19,13 @@ const LIGHT_STYLE: maplibregl.StyleSpecification = {
     },
   },
   layers: [
+    {
+      id: "background-fallback",
+      type: "background",
+      paint: {
+        "background-color": "#EAF2E7",
+      },
+    },
     {
       id: "osm-tiles",
       type: "raster",
@@ -115,7 +123,13 @@ export default function LoginMapBackground() {
     });
     mapRef.current = map;
 
+    const handleResize = () => {
+      map.resize();
+    };
+    window.addEventListener("resize", handleResize);
+
     map.on("load", () => {
+      map.resize();
       map.addSource("routes", { type: "geojson", data: ROUTES });
       map.addLayer({ id: "main-halo", type: "line", source: "routes", filter: ["==", ["get", "kind"], "main"], paint: { "line-color": "#16A779", "line-width": 10, "line-opacity": 0.22, "line-blur": 6 }, layout: { "line-cap": "round" } });
       map.addLayer({ id: "main-line", type: "line", source: "routes", filter: ["==", ["get", "kind"], "main"], paint: { "line-color": "#16A779", "line-width": 2.8, "line-opacity": 0.88 }, layout: { "line-cap": "round", "line-join": "round" } });
@@ -131,12 +145,42 @@ export default function LoginMapBackground() {
       map.addLayer({ id: "node-dot", type: "circle", source: "nodes", paint: { "circle-radius": 4, "circle-color": "#16A779", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 } });
     });
 
-    return () => { map.remove(); mapRef.current = null; };
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden="true">
-      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+    <div
+      className="rx-login-map-bg"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+        backgroundColor: "#EAF2E7",
+      }}
+      aria-hidden="true"
+    >
+      <div
+        ref={containerRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "#EAF2E7",
+        }}
+      />
 
       {/* SVG overlay: callout badges, labels, controls */}
       <svg

@@ -3,6 +3,7 @@
 import React from "react";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import AdminFooter from "./AdminFooter";
 import "@/app/admin/admin.css";
 
 interface AdminLayoutProps {
@@ -16,6 +17,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="rx-admin-main">
         <AdminTopbar />
         <main className="rx-admin-page">{children}</main>
+        <AdminFooter />
       </div>
     </div>
   );

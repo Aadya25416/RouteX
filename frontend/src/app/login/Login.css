@@ -1,7 +1,12 @@
 /* ================================================================
-   RouteX Login Page — Scoped to .rx-login-root
+   RouteX Login Page ï¿½ Scoped to .rx-login-root
    Pastel sage/mint flat-map theme matching the design reference.
    ================================================================ */
+
+html:has(.rx-login-root),
+body:has(.rx-login-root) {
+  background-color: #EAF2E7 !important;
+}
 
 .rx-login-root {
   position: relative;
@@ -9,7 +14,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #EAF2E7;
+  background-color: transparent;
   font-family: var(--font-geist-sans, "Inter", -apple-system, sans-serif);
   overflow-x: hidden;
   color: #174D3A;
@@ -17,12 +22,16 @@
 
 .rx-login-map-bg {
   position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  background-color: #EAF2E7;
 }
 
 .rx-login-header {
@@ -558,146 +567,6 @@
   margin-top: 2px;
 }
 
-.rx-login-footer {
-  position: relative;
-  z-index: 10;
-  background: #0B3027;
-  color: rgba(221, 244, 232, 0.75);
-  padding: 40px 28px 24px;
-}
-
-.rx-footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.rx-footer-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
-  gap: 28px 20px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid rgba(221, 244, 232, 0.12);
-  margin-bottom: 20px;
-}
-
-.rx-footer-brand-name {
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 8px;
-  text-decoration: none;
-}
-.rx-fbrand-route { color: #DDF4E8; }
-.rx-fbrand-x     { color: #16A779; }
-
-.rx-footer-brand-desc {
-  font-size: 12px;
-  color: rgba(221, 244, 232, 0.55);
-  line-height: 1.55;
-  margin: 0 0 14px 0;
-  max-width: 200px;
-}
-
-.rx-footer-social { display: flex; gap: 10px; }
-
-.rx-footer-social-link {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(221, 244, 232, 0.1);
-  color: rgba(221, 244, 232, 0.65);
-  text-decoration: none;
-  transition: background 0.2s, color 0.2s;
-}
-.rx-footer-social-link:hover {
-  background: rgba(22, 167, 121, 0.3);
-  color: #DDF4E8;
-}
-
-.rx-footer-col-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #DDF4E8;
-  margin: 0 0 12px 0;
-}
-
-.rx-footer-links {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rx-footer-link {
-  font-size: 12.5px;
-  color: rgba(221, 244, 232, 0.6);
-  text-decoration: none;
-  transition: color 0.2s;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.rx-footer-link:hover { color: #DDF4E8; }
-
-.rx-footer-link-muted {
-  font-size: 12.5px;
-  color: rgba(221, 244, 232, 0.35);
-  font-style: italic;
-}
-
-.rx-footer-badge {
-  display: inline-block;
-  font-size: 10px;
-  color: rgba(244, 182, 74, 0.85);
-  background: rgba(244, 182, 74, 0.12);
-  border: 1px solid rgba(244, 182, 74, 0.3);
-  border-radius: 10px;
-  padding: 1px 6px;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-
-.rx-footer-contact-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.rx-footer-contact-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  font-size: 12.5px;
-  color: rgba(221, 244, 232, 0.6);
-}
-.rx-footer-contact-icon {
-  flex-shrink: 0;
-  opacity: 0.75;
-  margin-top: 1px;
-}
-
-.rx-footer-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 11.5px;
-  color: rgba(221, 244, 232, 0.35);
-  flex-wrap: wrap;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .rx-spinner { animation: none; border-top-color: #ffffff; }
   .rx-primary-btn, .rx-secondary-btn, .rx-role-card, .rx-tab-btn { transition: none; }
@@ -712,10 +581,8 @@
   .rx-auth-card { padding: 22px 18px 20px; border-radius: 14px; }
   .rx-login-header { padding: 0 16px; }
   .rx-login-header-logo { font-size: 18px; }
-  .rx-footer-grid { grid-template-columns: 1fr 1fr; gap: 24px 16px; }
-}
+  }
 
 @media (max-width: 360px) {
-  .rx-footer-grid { grid-template-columns: 1fr; }
   .rx-role-grid { grid-template-columns: 1fr; }
 }
