@@ -21,6 +21,9 @@ dependencies = [
     "osmnx>=1.9.1",
     "httpx>=0.27.0",
     "python-multipart>=0.0.9",
+    "argon2-cffi>=23.1.0",
+    "pyjwt>=2.8.0",
+    "email-validator>=2.3.0",
 ]
 
 [project.optional-dependencies]

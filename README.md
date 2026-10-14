@@ -535,7 +535,22 @@ The backend decouples data ingestion from inference workloads, providing a pull-
 
 ---
 
-## 11. Troubleshooting
+## 12. Authentication & Role-Based Access Control (RBAC)
+
+NER-LINK implements enterprise credential authentication, Argon2id password hashing, short-lived JWT access tokens, revocable refresh sessions, and object-level authorization across all roles (`admin`, `dispatcher`, `field_officer`, `driver`, `ml_service`).
+
+- **Login**: `POST /api/v1/auth/login` (generates access token + sets `rx_refresh_token` HttpOnly cookie)
+- **Token Refresh**: `POST /api/v1/auth/refresh` (single-use rotation with replay attack defense)
+- **Current Identity**: `GET /api/v1/auth/me` (safe user profile, DB authoritative role)
+- **Logout**: `POST /api/v1/auth/logout` (invalidates session and clears cookie)
+- **User Administration**: `POST/GET/PATCH /api/v1/users` (Admin only)
+
+For detailed endpoint contracts, RBAC permission matrix, security configuration, and curl examples, see:
+👉 [docs/AUTHENTICATION_AND_RBAC_SPEC.md](docs/AUTHENTICATION_AND_RBAC_SPEC.md)
+
+---
+
+## 13. Troubleshooting
 
 - **Port Conflict on 55432 or 56379**: Change `POSTGRES_PORT` or `REDIS_PORT` in your `.env` file.
 - **Overpass API Rate Limits**: When importing large study corridors, use `--cache-file path/to/file.graphml` to cache the downloaded graph locally.

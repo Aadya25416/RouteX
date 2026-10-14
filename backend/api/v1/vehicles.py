@@ -119,6 +119,14 @@ async def ingest_vehicle_location(
     Snaps to road segment, validates monotonicity, updates Redis cache, and persists in PostgreSQL.
     """
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        vehicle = await service.get_vehicle(vehicle_id)
+        if vehicle.assigned_driver_id is not None and vehicle.assigned_driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not report telemetry for another driver's assigned vehicle.",
+            )
     loc = await service.record_vehicle_location(vehicle_id, payload, actor_id=current_user.id)
     return VehicleLocationResponse(
         id=loc.id,
@@ -259,6 +267,14 @@ async def get_latest_location(
 ) -> LatestVehicleLocationResponse:
     """Retrieves the latest reported location for a vehicle from Redis (fallback PostgreSQL)."""
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        vehicle = await service.get_vehicle(vehicle_id)
+        if vehicle.assigned_driver_id is not None and vehicle.assigned_driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not access telemetry for another driver's assigned vehicle.",
+            )
     loc = await service.get_latest_vehicle_location(vehicle_id)
     if not loc:
         # Check vehicle exists
@@ -281,7 +297,13 @@ async def get_vehicle_location_history(
 ) -> VehicleLocationListResponse:
     """Retrieves time-series GPS location history for a vehicle."""
     service = LogisticsService(session)
-    await service.get_vehicle(vehicle_id)
+    vehicle = await service.get_vehicle(vehicle_id)
+    if current_user.role == "driver" and vehicle.assigned_driver_id is not None and vehicle.assigned_driver_id != current_user.id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Drivers may not access telemetry for another driver's assigned vehicle.",
+        )
 
     count_res = await session.execute(
         select(func.count(VehicleLocation.id)).where(VehicleLocation.vehicle_id == vehicle_id)

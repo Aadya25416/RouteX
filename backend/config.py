@@ -79,6 +79,48 @@ class Settings(BaseSettings):
     SATELLITE_PROVIDER: str = "copernicus_sentinel2"
     SATELLITE_MAX_CLOUD_COVER_PERCENT: float = 40.0
 
+    # Authentication & JWT Security
+    JWT_SECRET_KEY: str = "nerlink-super-secret-jwt-key-change-in-prod-1234567890"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ALLOW_DEV_AUTH_HEADERS: bool = True
+
+    # Refresh Cookie Settings
+    REFRESH_COOKIE_NAME: str = "rx_refresh_token"
+    REFRESH_COOKIE_SECURE: bool = False
+    REFRESH_COOKIE_HTTPONLY: bool = True
+    REFRESH_COOKIE_SAMESITE: str = "lax"
+    REFRESH_COOKIE_PATH: str = "/api/v1/auth"
+
+    # Login Rate Limiting (Redis-backed)
+    RATE_LIMIT_LOGIN_MAX_ATTEMPTS: int = 5
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 300
+    LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 300
+
+    @field_validator("ALLOW_DEV_AUTH_HEADERS")
+    @classmethod
+    def validate_dev_auth_headers(cls, v: bool, info) -> bool:
+        app_env = info.data.get("APP_ENV", "development") if info.data else "development"
+        if app_env == "production" and v is True:
+            raise ValueError(
+                "ALLOW_DEV_AUTH_HEADERS cannot be True in production environment."
+            )
+        return v
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret(cls, v: str, info) -> str:
+        app_env = info.data.get("APP_ENV", "development") if info.data else "development"
+        if app_env == "production" and (
+            not v or "change-in-prod" in v or "nerlink_super_secret" in v or len(v) < 32
+        ):
+            raise ValueError(
+                "Production environment requires a strong, explicit JWT_SECRET_KEY of at least 32 characters."
+            )
+        return v
+
     @field_validator("CORRIDOR_MIN_LAT", "CORRIDOR_MAX_LAT")
     @classmethod
     def validate_latitude(cls, v: float) -> float:

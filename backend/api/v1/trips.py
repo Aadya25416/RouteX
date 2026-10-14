@@ -82,7 +82,7 @@ async def list_trips(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> TripListResponse:
-    """Lists trips with optional filters."""
+    """Lists trips with optional filters. Drivers are restricted from seeing other assigned drivers' trips."""
     service = LogisticsService(session)
     total, items = await service.list_trips(
         status_filter=status,
@@ -93,6 +93,8 @@ async def list_trips(
     )
     res_items = []
     for t in items:
+        if current_user.role == "driver" and t.driver_id is not None and t.driver_id != current_user.id:
+            continue
         res_items.append(await _to_trip_response(t, session))
     return TripListResponse(total=total, items=res_items)
 
@@ -103,9 +105,15 @@ async def get_trip(
     session: Annotated[AsyncSession, Depends(get_async_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> TripResponse:
-    """Retrieves full trip details including vehicle, delivery, and current route."""
+    """Retrieves full trip details. Drivers cannot access another driver's trip."""
     service = LogisticsService(session)
     trip = await service.get_trip(trip_id)
+    if current_user.role == "driver" and trip.driver_id is not None and trip.driver_id != current_user.id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Drivers may not access another driver's assigned trip.",
+        )
     return await _to_trip_response(trip, session)
 
 
@@ -117,6 +125,14 @@ async def start_trip(
 ) -> TripResponse:
     """Starts a planned trip (PLANNED -> IN_TRANSIT), updating vehicle and delivery."""
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        trip = await service.get_trip(trip_id)
+        if trip.driver_id is not None and trip.driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not operate another driver's assigned trip.",
+            )
     await service.start_trip(trip_id, actor_id=current_user.id)
     full_trip = await service.get_trip(trip_id)
     return await _to_trip_response(full_trip, session)
@@ -131,6 +147,14 @@ async def pause_trip(
 ) -> TripResponse:
     """Pauses an in-transit trip (IN_TRANSIT -> PAUSED)."""
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        trip = await service.get_trip(trip_id)
+        if trip.driver_id is not None and trip.driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not operate another driver's assigned trip.",
+            )
     reason = payload.reason if payload else None
     await service.pause_trip(trip_id, reason=reason, actor_id=current_user.id)
     full_trip = await service.get_trip(trip_id)
@@ -145,6 +169,14 @@ async def resume_trip(
 ) -> TripResponse:
     """Resumes a paused trip (PAUSED -> IN_TRANSIT)."""
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        trip = await service.get_trip(trip_id)
+        if trip.driver_id is not None and trip.driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not operate another driver's assigned trip.",
+            )
     await service.resume_trip(trip_id, actor_id=current_user.id)
     full_trip = await service.get_trip(trip_id)
     return await _to_trip_response(full_trip, session)
@@ -158,6 +190,14 @@ async def complete_trip(
 ) -> TripResponse:
     """Completes a trip, releases vehicle to AVAILABLE, and marks delivery DELIVERED."""
     service = LogisticsService(session)
+    if current_user.role == "driver":
+        trip = await service.get_trip(trip_id)
+        if trip.driver_id is not None and trip.driver_id != current_user.id:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Drivers may not operate another driver's assigned trip.",
+            )
     await service.complete_trip(trip_id, actor_id=current_user.id)
     full_trip = await service.get_trip(trip_id)
     return await _to_trip_response(full_trip, session)

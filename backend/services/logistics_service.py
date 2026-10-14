@@ -466,6 +466,7 @@ class LogisticsService:
         status_filter: str | None = None,
         vehicle_id: uuid.UUID | None = None,
         delivery_id: uuid.UUID | None = None,
+        driver_id: uuid.UUID | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[int, list[Trip]]:
@@ -484,6 +485,9 @@ class LogisticsService:
         if delivery_id:
             query = query.where(Trip.delivery_id == delivery_id)
             count_query = count_query.where(Trip.delivery_id == delivery_id)
+        if driver_id:
+            query = query.where(Trip.driver_id == driver_id)
+            count_query = count_query.where(Trip.driver_id == driver_id)
 
         total = (await self.session.execute(count_query)).scalar() or 0
         res = await self.session.execute(query.order_by(Trip.created_at.desc()).limit(limit).offset(offset))

@@ -26,46 +26,102 @@ async def get_current_user(
     x_user_email: Annotated[str | None, Header(alias="X-User-Email")] = None,
 ) -> User:
     """
-    Resolves the current authenticated user from Bearer token or development headers.
-    Verifies that the user exists and is active.
-    In non-development/test environments, development identity headers are rejected.
+    Resolves the current authenticated user from Bearer JWT access token or development headers.
+    - Validates signature, expiration, issuer, and claims of JWT.
+    - In production/staging, development headers are rejected immediately.
+    - Ensures headers cannot override an authenticated Bearer token.
+    - Verifies the user exists in database and is active.
     """
-    is_dev_env = settings.APP_ENV in ["development", "test"]
+    from backend.auth.crypto import decode_access_token
 
-    # Security check: disallow dev headers in staging/production
-    if not is_dev_env and (x_user_role or x_user_id or x_user_email):
+    is_dev_allowed = (
+        settings.APP_ENV in ["development", "test"]
+        and settings.ALLOW_DEV_AUTH_HEADERS is True
+    )
+
+    # 1. First priority: Authenticate via Bearer JWT token if present
+    if auth_creds and auth_creds.credentials:
+        token_str = auth_creds.credentials.strip()
+        try:
+            payload = decode_access_token(token_str)
+            user_id_str = payload.get("sub")
+            if not user_id_str:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token claims: subject ('sub') is required.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            try:
+                user_uuid = uuid.UUID(user_id_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token claims: subject ('sub') must be a valid UUID.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            res = await session.execute(select(User).where(User.id == user_uuid))
+            user = res.scalar_one_or_none()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User associated with this token does not exist.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Account is deactivated.",
+                )
+            return user
+        except HTTPException:
+            # If token is a JWT (contains 2 dots) or we are outside dev, raise immediately
+            if not is_dev_allowed or token_str.count(".") == 2:
+                raise
+            # Otherwise, allow dev fallback below if in dev/test environment
+
+    # 2. Check for development headers
+    has_dev_headers = bool(x_user_role or x_user_id or x_user_email)
+
+    # Outside dev/test or when dev headers are disabled, reject headers or missing auth
+    if not is_dev_allowed:
+        if has_dev_headers:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Development identity headers are prohibited outside development/test environments. Use standard Bearer token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Development identity headers are prohibited outside development/test environments. Use standard Bearer token.",
+            detail="Authentication required. Please provide a valid Bearer token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token_val = None
-    if auth_creds and auth_creds.credentials:
-        token_val = auth_creds.credentials.strip()
+    # 3. Development / Test environment header resolution
+    token_val = auth_creds.credentials.strip() if (auth_creds and auth_creds.credentials) else None
+    user_identifier = token_val or (x_user_id or x_user_email if is_dev_allowed else None)
 
-    user_identifier = token_val or (x_user_id or x_user_email if is_dev_env else None)
-
-    if not user_identifier:
+    if not user_identifier and not x_user_role:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Please provide a valid Bearer token or authorization header.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 1. Try parsing as UUID
+    # Try parsing identifier as UUID
     user_uuid: uuid.UUID | None = None
-    try:
-        user_uuid = uuid.UUID(user_identifier)
-    except ValueError:
-        user_uuid = None
+    if user_identifier:
+        try:
+            user_uuid = uuid.UUID(user_identifier)
+        except ValueError:
+            user_uuid = None
 
     user: User | None = None
     if user_uuid:
         result = await session.execute(select(User).where(User.id == user_uuid))
         user = result.scalar_one_or_none()
 
-    if not user:
+    if not user and user_identifier:
         # Try matching by email
         candidates = [user_identifier]
         if "@" not in user_identifier:
@@ -77,15 +133,20 @@ async def get_current_user(
         result = await session.execute(select(User).where(User.email.in_(candidates)))
         user = result.scalars().first()
 
-    # If user not found in DB, check if development X-User-Role is provided to auto-provision dev/test user
+    # If user not found in DB, auto-provision dev/test user if role is present
     if not user:
-        if x_user_role or (token_val and token_val in ["admin", "dispatcher", "field_officer", "driver", "ml_service", "service_worker"]):
-            role = x_user_role or token_val
-            dev_email = user_identifier if "@" in user_identifier else f"{role}_{user_identifier[:8]}@nerlink.internal"
-            # Double check existing
+        role = x_user_role or (token_val if token_val in ["admin", "dispatcher", "field_officer", "driver", "ml_service", "service_worker"] else None)
+        if role:
+            identifier_str = user_identifier or f"dev_{role}"
+            dev_email = identifier_str if "@" in identifier_str else f"{role}_{identifier_str[:8]}@nerlink.internal"
             existing = await session.execute(select(User).where(User.email == dev_email))
             found = existing.scalar_one_or_none()
             if found:
+                if not found.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Account is deactivated.",
+                    )
                 return found
 
             dev_user = User(

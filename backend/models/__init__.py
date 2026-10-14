@@ -1,7 +1,7 @@
 """Database models for NER-LINK."""
 
 from backend.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from backend.models.users import User
+from backend.models.users import User, UserSession
 from backend.models.districts import District
 from backend.models.roads import RoadNode, RoadSegment, RoadSegmentState, RoadStatus
 from backend.models.incidents import (
@@ -41,6 +41,7 @@ __all__ = [
     "TimestampMixin",
     "UUIDPrimaryKeyMixin",
     "User",
+    "UserSession",
     "District",
     "RoadNode",
     "RoadSegment",
