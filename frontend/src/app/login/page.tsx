@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 import HomeFooter from "@/components/home/HomeFooter";
 import "./Login.css";
 
@@ -333,7 +334,9 @@ function LoginFormInner({ role, onSwitchTab }: { role: Role; onSwitchTab: () => 
   );
 }
 
-function SignupFormInner({ role, onSwitchTab }: { role: Role; onSwitchTab: () => void }) {
+function SignupFormInner({ onSwitchTab }: { onSwitchTab: () => void }) {
+  const router = useRouter();
+  const { login } = useAuth();
   const nameId = useId();
   const emailId = useId();
   const pwId = useId();
@@ -374,23 +377,30 @@ function SignupFormInner({ role, onSwitchTab }: { role: Role; onSwitchTab: () =>
     ev.preventDefault();
     if (!validate()) return;
     setState((s) => ({ ...s, isLoading: true, error: null }));
-    await new Promise((r) => setTimeout(r, 400));
-    setState((s) => ({
-      ...s,
-      isLoading: false,
-      error:
-        "Self-service registration is restricted for security. User accounts with verified roles must be provisioned by a RouteX System Administrator.",
-    }));
+
+    try {
+      // 1. Driver self-registration via existing central API client
+      await api.post("/api/v1/auth/register", {
+        full_name: state.fullName.trim(),
+        email: state.email.trim(),
+        password: state.password,
+      });
+
+      // 2. Immediate login with issued credentials
+      const user = await login(state.email.trim(), state.password);
+      if (user.role === "driver") {
+        router.push("/driver");
+      } else {
+        router.push("/admin");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed.";
+      setState((s) => ({ ...s, isLoading: false, error: msg }));
+    }
   };
 
   return (
     <form id="signup-form" onSubmit={handleSubmit} noValidate aria-label="Sign up form">
-      {role === "field_officer" && (
-        <div className="rx-info-banner" role="note">
-          <span>ℹ</span>
-          <span>Admin account provisioning requires authorization. Contact your administrator.</span>
-        </div>
-      )}
       <div className="rx-field">
         <label htmlFor={nameId} className="rx-field-label">
           Full name
@@ -543,7 +553,7 @@ function SignupFormInner({ role, onSwitchTab }: { role: Role; onSwitchTab: () =>
         )}
       </button>
 
-      <input type="hidden" name="role" value={role} />
+      <input type="hidden" name="role" value="driver" />
       <div className="rx-signin-link-row">
         Already have an account? <button type="button" onClick={onSwitchTab}>Sign in</button>
       </div>
@@ -591,7 +601,10 @@ export default function LoginPage() {
               role="tab"
               className="rx-tab-btn"
               aria-selected={tab === "signup"}
-              onClick={() => setTab("signup")}
+              onClick={() => {
+                setTab("signup");
+                setRole("driver");
+              }}
             >
               Sign Up
             </button>
@@ -600,44 +613,81 @@ export default function LoginPage() {
           <h1 className="rx-card-title">{tab === "login" ? "Welcome back" : "Create your account"}</h1>
           {tab === "signup" && (
             <p className="rx-card-sub">
-              Join RouteX to monitor and plan authorized logistics corridors.
+              Join RouteX as an authorized driver for corridor operations.
             </p>
           )}
 
-          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend className="rx-role-label">Account Role</legend>
-            <div className="rx-role-grid">
-              <button
-                type="button"
-                id="role-officer"
-                className="rx-role-card"
-                aria-pressed={role === "field_officer"}
-                onClick={() => setRole("field_officer")}
-              >
-                <span className="rx-role-icon">
-                  <IconOfficer />
-                </span>
-                <span className="rx-role-text-name">Admin</span>
-              </button>
-              <button
-                type="button"
-                id="role-driver"
-                className="rx-role-card"
-                aria-pressed={role === "driver"}
-                onClick={() => setRole("driver")}
-              >
-                <span className="rx-role-icon">
-                  <IconTruck />
-                </span>
-                <span className="rx-role-text-name">Driver</span>
-              </button>
-            </div>
-          </fieldset>
+          {tab === "login" ? (
+            <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+              <legend className="rx-role-label">Account Role</legend>
+              <div className="rx-role-grid">
+                <button
+                  type="button"
+                  id="role-officer"
+                  className="rx-role-card"
+                  aria-pressed={role === "field_officer"}
+                  onClick={() => setRole("field_officer")}
+                >
+                  <span className="rx-role-icon">
+                    <IconOfficer />
+                  </span>
+                  <span className="rx-role-text-name">Admin</span>
+                </button>
+                <button
+                  type="button"
+                  id="role-driver"
+                  className="rx-role-card"
+                  aria-pressed={role === "driver"}
+                  onClick={() => setRole("driver")}
+                >
+                  <span className="rx-role-icon">
+                    <IconTruck />
+                  </span>
+                  <span className="rx-role-text-name">Driver</span>
+                </button>
+              </div>
+            </fieldset>
+          ) : (
+            <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+              <legend className="rx-role-label">Account Role</legend>
+              <div className="rx-role-grid">
+                <button
+                  type="button"
+                  id="role-driver"
+                  className="rx-role-card"
+                  aria-pressed={true}
+                  onClick={() => setRole("driver")}
+                >
+                  <span className="rx-role-icon">
+                    <IconTruck />
+                  </span>
+                  <span className="rx-role-text-name">Driver (Self-Registration)</span>
+                </button>
+                <button
+                  type="button"
+                  id="role-officer"
+                  className="rx-role-card"
+                  aria-pressed={false}
+                  disabled
+                  title="Admin accounts require administrator provisioning."
+                  style={{ opacity: 0.45, cursor: "not-allowed" }}
+                >
+                  <span className="rx-role-icon">
+                    <IconOfficer />
+                  </span>
+                  <span className="rx-role-text-name">Admin (Restricted)</span>
+                </button>
+              </div>
+            </fieldset>
+          )}
 
           {tab === "login" ? (
-            <LoginFormInner role={role} onSwitchTab={() => setTab("signup")} />
+            <LoginFormInner role={role} onSwitchTab={() => {
+              setTab("signup");
+              setRole("driver");
+            }} />
           ) : (
-            <SignupFormInner role={role} onSwitchTab={() => setTab("login")} />
+            <SignupFormInner onSwitchTab={() => setTab("login")} />
           )}
 
           <Link href="/home" className="rx-return-home" id="return-home-link">

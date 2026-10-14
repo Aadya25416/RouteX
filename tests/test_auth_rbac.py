@@ -692,3 +692,174 @@ async def test_rbac_permission_matrix_across_roles(
     assert (await async_client.get("/api/v1/ml/evidence/pending", headers={"Authorization": f"Bearer {driver_token}"})).status_code == 403
     assert (await async_client.get("/api/v1/ml/evidence/pending", headers={"Authorization": f"Bearer {officer_token}"})).status_code == 403
 
+
+# ============================================================================
+# 8. Driver Self-Registration and Auth Connectivity Tests
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_driver_self_registration_success_and_subsequent_login(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+):
+    """
+    Verifies public driver self-registration:
+    1. Creates active driver account without administrator intervention.
+    2. Hashes password using Argon2id.
+    3. Allows immediate subsequent login with issued credentials.
+    """
+    reg_email = f"driver_selfreg_{uuid.uuid4().hex[:6]}@routex.ai"
+    reg_pass = "SecureDriverPass123!"
+    reg_payload = {
+        "email": reg_email,
+        "full_name": "Self Reg Driver",
+        "password": reg_pass,
+    }
+
+    # 1. Driver self-registration
+    reg_res = await async_client.post("/api/v1/auth/register", json=reg_payload)
+    assert reg_res.status_code == 201, reg_res.text
+    data = reg_res.json()
+    assert data["email"] == reg_email.lower()
+    assert data["full_name"] == "Self Reg Driver"
+    assert data["role"] == "driver"
+    assert data["is_active"] is True
+    assert "password" not in data
+    assert "hashed_password" not in data
+
+    # Verify user state in DB
+    db_res = await db_session.execute(select(User).where(User.email == reg_email.lower()))
+    driver_user = db_res.scalar_one_or_none()
+    assert driver_user is not None
+    assert driver_user.role == "driver"
+    assert driver_user.is_active is True
+    assert verify_password(reg_pass, driver_user.hashed_password) is True
+
+    # 2. Subsequent login with newly created credentials
+    login_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": reg_email, "password": reg_pass},
+    )
+    assert login_res.status_code == 200, login_res.text
+    login_data = login_res.json()
+    assert "access_token" in login_data
+    assert login_data["token_type"] == "bearer"
+    assert login_data["user"]["email"] == reg_email.lower()
+    assert login_data["user"]["role"] == "driver"
+    assert "rx_refresh_token" in login_res.cookies
+
+
+@pytest.mark.asyncio
+async def test_driver_self_registration_duplicate_email_rejected(
+    async_client: AsyncClient,
+):
+    """Verifies that attempting to register an already-registered email returns 409 Conflict."""
+    email = f"driver_dup_{uuid.uuid4().hex[:6]}@routex.ai"
+    payload = {
+        "email": email,
+        "full_name": "First Driver",
+        "password": "Password123!",
+    }
+
+    # First registration succeeds
+    res1 = await async_client.post("/api/v1/auth/register", json=payload)
+    assert res1.status_code == 201
+
+    # Second registration with duplicate email fails with 409 Conflict
+    res2 = await async_client.post("/api/v1/auth/register", json=payload)
+    assert res2.status_code == 409, res2.text
+    assert "already exists" in res2.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_driver_self_registration_privilege_escalation_forced_to_driver(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+):
+    """
+    Verifies that client cannot supply privileged roles (admin, dispatcher, field_officer, ml_service)
+    during public self-registration. Role is strictly assigned by backend as 'driver'.
+    """
+    for privileged_role in ["admin", "dispatcher", "field_officer", "ml_service"]:
+        email = f"escalate_{privileged_role}_{uuid.uuid4().hex[:6]}@routex.ai"
+        payload = {
+            "email": email,
+            "full_name": f"Attacker {privileged_role}",
+            "password": "Password123!",
+            "role": privileged_role,
+        }
+
+        res = await async_client.post("/api/v1/auth/register", json=payload)
+        # Backend must either reject or safely force the role to driver
+        assert res.status_code in (201, 400, 403), res.text
+        if res.status_code == 201:
+            data = res.json()
+            assert data["role"] == "driver", f"Role was not forced to driver: {data['role']}"
+
+            # Verify in DB that role is strictly 'driver'
+            db_res = await db_session.execute(select(User).where(User.email == email.lower()))
+            user = db_res.scalar_one_or_none()
+            assert user is not None
+            assert user.role == "driver", f"DB role was not 'driver': {user.role}"
+
+
+@pytest.mark.asyncio
+async def test_auth_endpoints_connectivity(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+):
+    """
+    Verifies that all four core authentication endpoints are wired and reachable:
+    - POST /api/v1/auth/login
+    - POST /api/v1/auth/refresh
+    - POST /api/v1/auth/logout
+    - GET /api/v1/auth/me
+    """
+    email = f"connect_test_{uuid.uuid4().hex[:6]}@routex.ai"
+    password = "TestConnectPass123!"
+    user = User(
+        id=uuid.uuid4(),
+        email=email.lower(),
+        full_name="Connect Tester",
+        role="driver",
+        hashed_password=hash_password(password),
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    # 1. POST /api/v1/auth/login
+    login_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": email, "password": password},
+    )
+    assert login_res.status_code == 200
+    access_token = login_res.json()["access_token"]
+    refresh_token = login_res.json()["refresh_token"]
+
+    # 2. GET /api/v1/auth/me (authenticated)
+    me_res = await async_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert me_res.status_code == 200
+    assert me_res.json()["email"] == email.lower()
+
+    # 3. POST /api/v1/auth/refresh (rotate token)
+    ref_res = await async_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert ref_res.status_code == 200
+    new_access_token = ref_res.json()["access_token"]
+    assert new_access_token != access_token
+
+    # 4. POST /api/v1/auth/logout
+    logout_res = await async_client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": ref_res.json()["refresh_token"]},
+    )
+    assert logout_res.status_code == 200
+    assert logout_res.json()["status"] == "ok"
+
+

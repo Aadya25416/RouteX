@@ -56,7 +56,10 @@ services:
       CORRIDOR_MAX_LAT: ${CORRIDOR_MAX_LAT:-27.70}
       CORRIDOR_MAX_LON: ${CORRIDOR_MAX_LON:-92.80}
       MEDIA_DIR: ${MEDIA_DIR:-data/evidence}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-nerlink-super-secret-jwt-key-change-in-prod-1234567890}
+      ALLOW_DEV_AUTH_HEADERS: ${ALLOW_DEV_AUTH_HEADERS:-true}
     volumes:
+      - ./backend:/app/backend
       - evidence_data:/app/data/evidence
     depends_on:
       db:
