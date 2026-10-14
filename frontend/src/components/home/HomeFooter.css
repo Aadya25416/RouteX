@@ -1,0 +1,225 @@
+/* ================================================================
+   RouteX Marketing Footer CSS
+   Light-theme, multi-column professional footer for marketing pages.
+   Used on /, /home, and /login.
+   ================================================================ */
+
+.home-footer {
+  width: 100%;
+  position: relative;
+  z-index: 10;
+  background-color: #FAFBF7;
+  border-top: 1px solid #DCE5D8;
+  padding: 64px 0 36px;
+  box-sizing: border-box;
+  font-family: var(--font-geist-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.home-footer-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 28px;
+  box-sizing: border-box;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.3fr;
+  gap: 36px;
+  margin-bottom: 48px;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-col-brand {
+  padding-right: 16px;
+}
+
+.footer-brand {
+  font-size: 24px;
+  font-weight: 900;
+  text-decoration: none;
+  letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: baseline;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.footer-brand:focus-visible {
+  outline: 2px solid #16A779;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.brand-route {
+  color: #193B32;
+}
+
+.brand-x {
+  color: #16A779;
+}
+
+.footer-brand-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: #DDF4E8;
+  color: #12432A;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  letter-spacing: 0.05em;
+}
+
+.footer-brand-desc {
+  font-size: 13.5px;
+  color: #71877D;
+  line-height: 1.6;
+  max-width: 320px;
+  margin: 0 0 16px;
+}
+
+.footer-org-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #193B32;
+  background-color: #F1F4E8;
+  border: 1px solid #DCE5D8;
+  padding: 5px 10px;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.footer-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #193B32;
+  margin: 0 0 16px;
+  letter-spacing: -0.01em;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.footer-link {
+  color: #71877D;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease;
+  width: fit-content;
+  border-radius: 4px;
+}
+
+.footer-link:hover {
+  color: #16A779;
+}
+
+.footer-link:focus-visible {
+  color: #16A779;
+  outline: 2px solid #16A779;
+  outline-offset: 2px;
+}
+
+.footer-contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #71877D;
+  line-height: 1.4;
+}
+
+.contact-icon {
+  color: #16A779;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.contact-text-main {
+  color: #193B32;
+  font-weight: 600;
+  display: block;
+}
+
+.contact-text-sub {
+  color: #8F9E97;
+  font-size: 11.5px;
+  display: block;
+}
+
+.footer-bottom-bar {
+  border-top: 1px solid #DCE5D8;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #8F9E97;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer-copyright {
+  color: #71877D;
+}
+
+.footer-disclaimer {
+  color: #8F9E97;
+  font-style: italic;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .footer-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+  .footer-col-brand {
+    grid-column: span 3;
+    padding-right: 0;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-footer {
+    padding: 48px 0 28px;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-bottom: 36px;
+  }
+  .footer-col-brand {
+    grid-column: span 1;
+  }
+  .footer-bottom-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

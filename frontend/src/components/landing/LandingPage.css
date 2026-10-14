@@ -8,6 +8,7 @@
   position: relative;
   width: 100vw;
   height: 100vh;
+  flex-shrink: 0;
   overflow: hidden;
   background-color: #06201A;
   color: #E4F3EA;
