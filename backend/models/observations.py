@@ -19,17 +19,41 @@ class WeatherObservation(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "weather_observations"
 
     provider: Mapped[str] = mapped_column(String(50), default="open-meteo", nullable=False)
+    data_type: Mapped[str] = mapped_column(
+        String(20),
+        default="CURRENT",
+        nullable=False,
+        index=True,
+        comment="CURRENT, OBSERVATION, FORECAST, DAILY_SUMMARY",
+    )
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     location_geom: Mapped[object] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True),
         nullable=False,
     )
-    rainfall_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
-    wind_speed_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
-    wind_gusts_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
-    snowfall_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
-    weather_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    visibility_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Core measurements & forecasts
     temperature_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rainfall_mm: Mapped[float | None] = mapped_column(Float, nullable=True)  # Legacy / liquid rain mm
+    precipitation_mm: Mapped[float | None] = mapped_column(Float, nullable=True)  # Total interval precipitation mm
+    rain_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    showers_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    snowfall_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    precipitation_probability_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    relative_humidity_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    dew_point_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    apparent_temperature_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pressure_msl_hpa: Mapped[float | None] = mapped_column(Float, nullable=True)
+    surface_pressure_hpa: Mapped[float | None] = mapped_column(Float, nullable=True)
+    wind_speed_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
+    wind_direction_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    wind_gusts_kmh: Mapped[float | None] = mapped_column(Float, nullable=True)
+    visibility_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weather_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cloud_cover_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    et0_evapotranspiration_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    soil_moisture_m3m3: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     road_segment_id: Mapped[str | None] = mapped_column(
         String(64),
@@ -38,7 +62,8 @@ class WeatherObservation(Base, UUIDPrimaryKeyMixin):
         nullable=True,
     )
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
-    forecast_valid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    forecast_valid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True, nullable=True)
+    issue_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     raw_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
