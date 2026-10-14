@@ -1,5 +1,5 @@
 /* ================================================================
-   RouteX Login Page � Scoped to .rx-login-root
+   RouteX Login Page — Scoped to .rx-login-root
    Pastel sage/mint flat-map theme matching the design reference.
    ================================================================ */
 
@@ -15,7 +15,7 @@ body:has(.rx-login-root) {
   display: flex;
   flex-direction: column;
   background-color: transparent;
-  font-family: var(--font-geist-sans, "Inter", -apple-system, sans-serif);
+  font-family: var(--font-inter, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   overflow-x: hidden;
   color: #174D3A;
 }
@@ -40,12 +40,12 @@ body:has(.rx-login-root) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
-  height: 52px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(22, 167, 121, 0.15);
+  padding: 0 32px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(22, 167, 121, 0.16);
 }
 
 .rx-login-header-home {
@@ -54,18 +54,19 @@ body:has(.rx-login-root) {
   gap: 7px;
   text-decoration: none;
   color: #174D3A;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 7px;
+  padding: 6px 12px;
+  border-radius: 8px;
   border: 1px solid rgba(22, 167, 121, 0.25);
-  background: rgba(221, 244, 232, 0.6);
-  transition: background 0.2s, border-color 0.2s;
+  background: rgba(221, 244, 232, 0.65);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .rx-login-header-home:hover,
 .rx-login-header-home:focus-visible {
   background: #DDF4E8;
   border-color: #16A779;
+  color: #0B3027;
   outline: none;
 }
 .rx-login-header-home:focus-visible {
@@ -77,25 +78,31 @@ body:has(.rx-login-root) {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   text-decoration: none;
   display: flex;
   align-items: baseline;
+  transition: transform 0.15s ease;
+}
+.rx-login-header-logo:hover {
+  transform: translateX(-50%) scale(1.02);
 }
 .rx-logo-route { color: #0B3027; }
 .rx-logo-x     { color: #16A779; }
 
-.rx-login-header-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: #7A5C00;
-  background: rgba(244, 182, 74, 0.22);
-  border: 1px solid rgba(244, 182, 74, 0.55);
-  border-radius: 20px;
-  padding: 3px 10px;
-  letter-spacing: 0.02em;
+.rx-card-brand-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.rx-card-brand-wordmark {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .rx-login-body {
@@ -105,34 +112,34 @@ body:has(.rx-login-root) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 40px 24px 36px;
+  gap: 32px;
+  padding: 44px 24px 40px;
 }
 
 .rx-auth-card {
   width: 100%;
-  max-width: 404px;
-  background: #F8F8F0;
-  border: 1px solid rgba(22, 167, 121, 0.18);
-  border-radius: 18px;
-  padding: 28px 30px 24px;
+  max-width: 420px;
+  background: #FDFEFC;
+  border: 1.5px solid rgba(22, 167, 121, 0.20);
+  border-radius: 20px;
+  padding: 32px 34px 28px;
   box-shadow:
-    0 2px 16px rgba(11, 48, 39, 0.07),
-    0 8px 32px rgba(11, 48, 39, 0.06);
+    0 4px 20px rgba(11, 48, 39, 0.06),
+    0 12px 36px rgba(11, 48, 39, 0.05);
 }
 
 .rx-tab-row {
   display: flex;
   background: #EAF2E7;
   border-radius: 30px;
-  padding: 3px;
+  padding: 4px;
   margin-bottom: 22px;
-  gap: 2px;
+  gap: 4px;
 }
 
 .rx-tab-btn {
   flex: 1;
-  padding: 7px 0;
+  padding: 8px 0;
   border: none;
   border-radius: 24px;
   font-size: 14px;
@@ -140,7 +147,7 @@ body:has(.rx-login-root) {
   cursor: pointer;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   background: transparent;
-  color: #71877D;
+  color: #557265;
   font-family: inherit;
 }
 .rx-tab-btn:focus-visible {
@@ -150,49 +157,55 @@ body:has(.rx-login-root) {
 .rx-tab-btn[aria-selected="true"] {
   background: #174D3A;
   color: #ffffff;
-  box-shadow: 0 1px 6px rgba(11, 48, 39, 0.25);
+  box-shadow: 0 2px 8px rgba(11, 48, 39, 0.22);
 }
 
 .rx-card-title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   color: #0B3027;
-  margin: 0 0 5px 0;
-  letter-spacing: -0.02em;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.025em;
+  text-align: center;
 }
 
 .rx-card-sub {
-  font-size: 13px;
-  color: #71877D;
-  margin: 0 0 20px 0;
+  font-size: 13.5px;
+  color: #557265;
+  margin: -6px 0 20px 0;
   line-height: 1.5;
+  text-align: center;
 }
 
 .rx-role-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #174D3A;
-  margin-bottom: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2F594A;
+  margin-bottom: 10px;
+  display: block;
 }
 
 .rx-role-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
 .rx-role-card {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1.5px solid #D8E2D9;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #D2DFD5;
   background: #ffffff;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.1s;
+  text-align: center;
   outline: none;
   font-family: inherit;
 }
@@ -202,12 +215,13 @@ body:has(.rx-login-root) {
 }
 .rx-role-card[aria-pressed="true"] {
   border-color: #16A779;
-  background: #DDF4E8;
-  box-shadow: 0 0 0 3px rgba(22, 167, 121, 0.12);
+  background: #E8F7F0;
+  box-shadow: 0 0 0 3px rgba(22, 167, 121, 0.14);
 }
 .rx-role-card:hover:not([aria-pressed="true"]) {
-  border-color: rgba(22, 167, 121, 0.45);
-  background: rgba(221, 244, 232, 0.45);
+  border-color: rgba(22, 167, 121, 0.5);
+  background: rgba(221, 244, 232, 0.35);
+  transform: translateY(-1px);
 }
 
 .rx-role-icon {
@@ -223,27 +237,21 @@ body:has(.rx-login-root) {
 }
 
 .rx-role-text-name {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #0B3027;
-  line-height: 1.2;
-}
-
-.rx-role-text-desc {
-  font-size: 11px;
-  color: #71877D;
-  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .rx-field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 16px;
 }
 
 .rx-field-label {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #174D3A;
 }
@@ -256,8 +264,8 @@ body:has(.rx-login-root) {
 
 .rx-input-icon {
   position: absolute;
-  left: 13px;
-  color: #71877D;
+  left: 14px;
+  color: #658476;
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -265,27 +273,27 @@ body:has(.rx-login-root) {
 
 .rx-input {
   width: 100%;
-  padding: 10px 14px 10px 38px;
-  border-radius: 9px;
-  border: 1.5px solid #D8E2D9;
+  padding: 11px 14px 11px 40px;
+  border-radius: 10px;
+  border: 1.5px solid #D2DFD5;
   background: #ffffff;
   color: #0B3027;
-  font-size: 14px;
+  font-size: 14.5px;
   font-family: inherit;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
-.rx-input::placeholder { color: #9DB5AA; }
+.rx-input::placeholder { color: #8BA89B; }
 .rx-input:focus {
   border-color: #16A779;
-  box-shadow: 0 0 0 3px rgba(22, 167, 121, 0.12);
+  box-shadow: 0 0 0 3px rgba(22, 167, 121, 0.15);
 }
 .rx-input--error {
   border-color: #E05252 !important;
-  box-shadow: 0 0 0 3px rgba(224, 82, 82, 0.10) !important;
+  box-shadow: 0 0 0 3px rgba(224, 82, 82, 0.12) !important;
 }
-.rx-input--pw { padding-right: 42px; }
+.rx-input--pw { padding-right: 44px; }
 
 .rx-pw-toggle {
   position: absolute;
@@ -293,11 +301,11 @@ body:has(.rx-login-root) {
   background: none;
   border: none;
   cursor: pointer;
-  color: #71877D;
+  color: #658476;
   display: flex;
   align-items: center;
-  padding: 4px;
-  border-radius: 5px;
+  padding: 5px;
+  border-radius: 6px;
   transition: color 0.2s;
 }
 .rx-pw-toggle:hover { color: #174D3A; }
@@ -307,38 +315,39 @@ body:has(.rx-login-root) {
 }
 
 .rx-field-err {
-  font-size: 11.5px;
+  font-size: 12px;
   color: #C0392B;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .rx-remember-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .rx-remember-label {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 13.5px;
   color: #174D3A;
   cursor: pointer;
   user-select: none;
 }
 
 .rx-checkbox {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   accent-color: #16A779;
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 4px;
 }
 
 .rx-forgot-link {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #16A779;
   text-decoration: none;
@@ -359,7 +368,7 @@ body:has(.rx-login-root) {
 .rx-primary-btn {
   width: 100%;
   padding: 12px 20px;
-  border-radius: 10px;
+  border-radius: 11px;
   background: #174D3A;
   border: none;
   color: #ffffff;
@@ -372,12 +381,12 @@ body:has(.rx-login-root) {
   justify-content: center;
   gap: 8px;
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(11, 48, 39, 0.18);
+  box-shadow: 0 3px 10px rgba(11, 48, 39, 0.2);
 }
 .rx-primary-btn:hover:not(:disabled) {
   background: #16A779;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(22, 167, 121, 0.3);
+  box-shadow: 0 5px 18px rgba(22, 167, 121, 0.32);
 }
 .rx-primary-btn:focus-visible {
   outline: 2px solid #16A779;
@@ -391,28 +400,29 @@ body:has(.rx-login-root) {
 .rx-or-divider {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 14px 0;
-  color: #9DB5AA;
+  gap: 12px;
+  margin: 16px 0;
+  color: #8BA89B;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 .rx-or-divider::before,
 .rx-or-divider::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: #D8E2D9;
+  background: #D2DFD5;
 }
 
 .rx-secondary-btn {
   width: 100%;
   padding: 11px 20px;
-  border-radius: 10px;
-  border: 1.5px solid #D8E2D9;
+  border-radius: 11px;
+  border: 1.5px solid #D2DFD5;
   background: transparent;
   color: #0B3027;
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -420,7 +430,7 @@ body:has(.rx-login-root) {
 }
 .rx-secondary-btn:hover {
   border-color: #16A779;
-  background: rgba(221, 244, 232, 0.4);
+  background: rgba(221, 244, 232, 0.45);
 }
 .rx-secondary-btn:focus-visible {
   outline: 2px solid #16A779;
@@ -431,10 +441,10 @@ body:has(.rx-login-root) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-top: 14px;
-  font-size: 13px;
-  color: #71877D;
+  gap: 7px;
+  margin-top: 18px;
+  font-size: 13.5px;
+  color: #557265;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -460,45 +470,43 @@ body:has(.rx-login-root) {
 
 .rx-err-banner {
   display: flex;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 12.5px;
+  gap: 9px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 13px;
   line-height: 1.45;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   background: rgba(224, 82, 82, 0.09);
-  border: 1px solid rgba(224, 82, 82, 0.28);
+  border: 1px solid rgba(224, 82, 82, 0.32);
   color: #9B2020;
 }
 
 .rx-info-banner {
   display: flex;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 12.5px;
+  gap: 9px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 13px;
   line-height: 1.45;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   background: rgba(22, 167, 121, 0.08);
-  border: 1px solid rgba(22, 167, 121, 0.25);
+  border: 1px solid rgba(22, 167, 121, 0.28);
   color: #174D3A;
 }
 
 .rx-terms-text {
-  font-size: 11.5px;
-  color: #71877D;
+  font-size: 12px;
+  color: #658476;
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   line-height: 1.5;
 }
-.rx-terms-text a { color: #16A779; text-decoration: none; }
-.rx-terms-text a:hover { text-decoration: underline; }
 
 .rx-signin-link-row {
   text-align: center;
-  margin-top: 14px;
-  font-size: 13px;
-  color: #71877D;
+  margin-top: 16px;
+  font-size: 13.5px;
+  color: #557265;
 }
 .rx-signin-link-row button {
   background: none;
@@ -506,7 +514,7 @@ body:has(.rx-login-root) {
   color: #16A779;
   font-weight: 600;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 13.5px;
   padding: 0;
   font-family: inherit;
 }
@@ -518,21 +526,21 @@ body:has(.rx-login-root) {
 }
 
 .rx-side-panel {
-  width: 220px;
+  width: 230px;
   flex-shrink: 0;
-  background: rgba(248, 248, 240, 0.92);
-  border: 1px solid rgba(22, 167, 121, 0.2);
-  border-radius: 14px;
-  padding: 18px 16px;
+  background: rgba(248, 248, 240, 0.94);
+  border: 1px solid rgba(22, 167, 121, 0.22);
+  border-radius: 16px;
+  padding: 20px 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 2px 12px rgba(11, 48, 39, 0.06);
-  backdrop-filter: blur(8px);
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(11, 48, 39, 0.06);
+  backdrop-filter: blur(10px);
 }
 
 .rx-side-time {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #0B3027;
   text-align: right;
@@ -547,24 +555,26 @@ body:has(.rx-login-root) {
 }
 
 .rx-side-panel-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #0B3027;
   line-height: 1.3;
 }
 
 .rx-side-panel-sub {
-  font-size: 12px;
-  color: #71877D;
-  line-height: 1.4;
+  font-size: 12.5px;
+  color: #557265;
+  line-height: 1.45;
 }
 
 .rx-side-demo-tag {
-  font-size: 10px;
-  color: #9DB5AA;
-  border-top: 1px solid #D8E2D9;
-  padding-top: 8px;
-  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #16A779;
+  border-top: 1px solid #D2DFD5;
+  padding-top: 10px;
+  margin-top: 4px;
+  letter-spacing: 0.02em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -574,14 +584,14 @@ body:has(.rx-login-root) {
 
 @media (max-width: 860px) {
   .rx-side-panel { display: none; }
-  .rx-login-body { padding: 28px 16px 28px; }
+  .rx-login-body { padding: 32px 16px 32px; }
 }
 
 @media (max-width: 480px) {
-  .rx-auth-card { padding: 22px 18px 20px; border-radius: 14px; }
+  .rx-auth-card { padding: 24px 20px 22px; border-radius: 16px; }
   .rx-login-header { padding: 0 16px; }
-  .rx-login-header-logo { font-size: 18px; }
-  }
+  .rx-login-header-logo { font-size: 22px; }
+}
 
 @media (max-width: 360px) {
   .rx-role-grid { grid-template-columns: 1fr; }

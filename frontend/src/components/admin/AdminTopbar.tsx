@@ -1,34 +1,22 @@
 "use client";
 
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 interface AdminTopbarProps {
   onSearch?: (query: string) => void;
 }
 
-function subscribeToStorage(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
-
 export default function AdminTopbar({ onSearch }: AdminTopbarProps) {
+  const { user, logout } = useAuth();
   const [searchValue, setSearchValue] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
-  const adminName = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("rx_admin_name") || "System Admin",
-    () => "System Admin"
-  );
-
-  const adminEmail = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("rx_admin_email") || "admin@routex.in",
-    () => "admin@routex.in"
-  );
+  const adminName = user?.full_name || "RouteX Admin";
+  const adminEmail = user?.email || "admin@routex.ai";
+  const adminRole = user?.role || "admin";
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
@@ -149,7 +137,7 @@ export default function AdminTopbar({ onSearch }: AdminTopbarProps) {
                 <p className="font-bold text-[#193B32]">{adminName}</p>
                 <p className="text-[11px] text-[#71877D] truncate">{adminEmail}</p>
                 <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-[#DDF4E8] text-[#12432A]">
-                  Role: admin
+                  Role: {adminRole}
                 </span>
               </div>
               <Link
@@ -159,20 +147,16 @@ export default function AdminTopbar({ onSearch }: AdminTopbarProps) {
               >
                 System Settings
               </Link>
-              <Link
-                href="/login"
-                className="block px-3.5 py-2 text-[#DC4848] hover:bg-[#FEEEEE] transition-colors"
-                onClick={() => {
+              <button
+                type="button"
+                className="w-full text-left block px-3.5 py-2 text-[#DC4848] hover:bg-[#FEEEEE] transition-colors cursor-pointer"
+                onClick={async () => {
                   setShowProfileMenu(false);
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("rx_auth_role");
-                    localStorage.removeItem("rx_admin_name");
-                    localStorage.removeItem("rx_admin_email");
-                  }
+                  await logout();
                 }}
               >
-                Switch Role / Logout
-              </Link>
+                Logout
+              </button>
             </div>
           )}
         </div>

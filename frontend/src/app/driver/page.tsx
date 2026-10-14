@@ -17,22 +17,69 @@ const RoadMap = dynamic(() => import("@/components/RoadMap"), {
   ),
 });
 
+import { api } from "@/lib/api";
+
+interface BackendTripItem {
+  id: string;
+  status: string;
+  estimated_duration_s?: number;
+  estimated_distance_m?: number;
+  vehicle?: { id: string; registration_number?: string };
+  delivery?: {
+    id: string;
+    origin_name?: string;
+    destination_name?: string;
+  };
+}
+
+interface TripListResponse {
+  total: number;
+  items: BackendTripItem[];
+}
+
 export default function DriverDashboardPage() {
-  const [trip] = useState(INITIAL_DRIVER_TRIP);
+  const [trip, setTrip] = useState(INITIAL_DRIVER_TRIP);
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
   const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
 
-  // Fetch real GeoJSON if available (without failing if offline)
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setBackendInfo(data))
+    let isMounted = true;
+
+    api.get<BackendInfoResponse>("/backend-api/info")
+      .then((data) => {
+        if (isMounted) setBackendInfo(data);
+      })
       .catch(() => {});
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setRoadsData(data))
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+      .then((data) => {
+        if (isMounted) setRoadsData(data);
+      })
       .catch(() => {});
+
+    // Fetch driver's real assigned trips
+    api
+      .get<TripListResponse>("/api/v1/trips?limit=10")
+      .then((data) => {
+        if (isMounted && data && data.items && data.items.length > 0) {
+          const active = data.items.find((t) => t.status === "IN_TRANSIT" || t.status === "PLANNED") || data.items[0];
+          if (active) {
+            setTrip((prev) => ({
+              ...prev,
+              id: active.id,
+              origin: active.delivery?.origin_name || prev.origin,
+              destination: active.delivery?.destination_name || prev.destination,
+              totalDistanceKm: active.estimated_distance_m ? Math.round(active.estimated_distance_m / 1000) : prev.totalDistanceKm,
+              estimatedDuration: active.estimated_duration_s ? `${Math.round(active.estimated_duration_s / 60)} min` : prev.estimatedDuration,
+            }));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const stopMarkers = trip.stops.map((s) => ({

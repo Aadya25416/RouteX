@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import DriverLayout from "@/components/driver/DriverLayout";
 import { DriverIncidentType } from "@/types/driver";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
 
 // Dynamically import RoadMap
@@ -21,6 +23,7 @@ const RoadMap = dynamic(() => import("@/components/RoadMap"), {
 function ReportHazardFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const typeParam = (searchParams.get("type") as DriverIncidentType) || "landslide";
 
   const [incidentType, setIncidentType] = useState<DriverIncidentType>(typeParam);
@@ -40,13 +43,11 @@ function ReportHazardFormContent() {
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
 
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<BackendInfoResponse>("/backend-api/info")
       .then((data) => setBackendInfo(data))
       .catch(() => {});
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
       .then((data) => setRoadsData(data))
       .catch(() => {});
   }, []);
@@ -101,41 +102,42 @@ function ReportHazardFormContent() {
       source: "FIELD_REPORT",
     };
 
+    const isDriver = user?.role === "driver";
+    let incidentId: string | null = null;
+    let uploadedEvidenceCount = 0;
+
     try {
-      const res = await fetch("/api/v1/incidents", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Role": "field_officer",
-        },
-        body: JSON.stringify(payload),
-      });
+      if (!isDriver) {
+        const data = await api.post<{ id: string }>("/api/v1/incidents", payload);
+        incidentId = data.id;
+      }
 
-      if (res.ok) {
-        const data = await res.json();
-        const incidentId = data.id;
-        let uploadedEvidenceCount = 0;
-
-        // Ingest any attached photographic evidence files
-        if (files.length > 0 && incidentId) {
-          for (const file of files) {
-            const formData = new FormData();
-            formData.append("file", file);
-            try {
-              const uploadRes = await fetch(`/api/v1/incidents/${incidentId}/evidence`, {
-                method: "POST",
-                headers: { "X-User-Role": "field_officer" },
-                body: formData,
-              });
-              if (uploadRes.ok) {
-                uploadedEvidenceCount++;
-              }
-            } catch (uploadErr) {
-              console.warn("Evidence photo upload failed:", uploadErr);
-            }
+      // Ingest attached photographic evidence files
+      if (files.length > 0) {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("source_type", isDriver ? "DRIVER" : "FIELD_OFFICER");
+          formData.append("latitude", String(coords[1]));
+          formData.append("longitude", String(coords[0]));
+          if (incidentId) {
+            formData.append("incident_id", incidentId);
+          }
+          try {
+            await api.upload("/api/v1/evidence/upload", formData);
+            uploadedEvidenceCount++;
+          } catch (uploadErr) {
+            console.warn("Evidence photo upload failed:", uploadErr);
           }
         }
+      }
 
+      if (isDriver) {
+        setSubmitResult({
+          success: true,
+          message: `Hazard telemetry and ${uploadedEvidenceCount}/${files.length} photo(s) submitted to dispatch via evidence ingestion pipeline. Formal incident triage will be conducted by Field Operations.`,
+        });
+      } else {
         const evidenceMsg =
           files.length > 0
             ? ` and ${uploadedEvidenceCount}/${files.length} photo(s) persisted`
@@ -143,18 +145,19 @@ function ReportHazardFormContent() {
         setSubmitResult({
           success: true,
           message: `Report successfully registered with dispatch operations${evidenceMsg}. Queued for verification.`,
-          incidentId: incidentId,
-        });
-      } else {
-        setSubmitResult({
-          success: false,
-          message: `Backend returned HTTP ${res.status}: Field incident submission requires an authorized field officer or dispatcher bearer token.`,
+          incidentId: incidentId || undefined,
         });
       }
-    } catch {
+    } catch (err: unknown) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+          ? err.message
+          : "Failed to submit report.";
       setSubmitResult({
         success: false,
-        message: "RouteX backend service is currently offline. Form validation succeeded, but no live connection exists to http://127.0.0.1:8000.",
+        message: msg,
       });
     } finally {
       setIsSubmitting(false);

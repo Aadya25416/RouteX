@@ -4,34 +4,64 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { INITIAL_ADMIN_INCIDENTS } from "@/data/adminData";
+import { api } from "@/lib/api";
+import type { AdminIncidentItem } from "@/types/admin";
 import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
+
+interface IncidentListResponse {
+  total: number;
+  items: Array<{
+    id: string;
+    incident_type: string;
+    status: string;
+    severity?: string;
+    description: string;
+    location_description?: string;
+    created_at: string;
+  }>;
+}
 
 export default function AdminOverviewPage() {
   const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
-  const [incidents] = useState(INITIAL_ADMIN_INCIDENTS);
+  const [incidents, setIncidents] = useState(INITIAL_ADMIN_INCIDENTS);
 
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => {
-        if (res.ok) {
-          setIsBackendHealthy(true);
-          return res.json();
-        }
-        setIsBackendHealthy(false);
-        return null;
+    api.get<BackendInfoResponse>("/backend-api/info")
+      .then((data) => {
+        setIsBackendHealthy(true);
+        setBackendInfo(data);
       })
-      .then((data) => setBackendInfo(data))
       .catch(() => {
         setIsBackendHealthy(false);
       });
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: RoadFeatureCollection | null) => {
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+      .then((data) => {
         if (data && data.features) {
           setRoadsData(data);
+        }
+      })
+      .catch(() => {});
+
+    api.get<IncidentListResponse>("/api/v1/incidents?limit=5")
+      .then((res) => {
+        if (res.items && res.items.length > 0) {
+          const mapped: AdminIncidentItem[] = res.items.map((i) => ({
+            id: i.id,
+            type: (i.incident_type as AdminIncidentItem["type"]) || "OTHER",
+            status: (i.status as AdminIncidentItem["status"]) || "SUBMITTED",
+            location: i.location_description || "Corridor Segment",
+            coordinates: [92.4, 27.2],
+            reportedBy: "Operations Center",
+            reporterRole: "Field Officer",
+            description: i.description,
+            timeAgo: new Date(i.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            timestamp: i.created_at || new Date().toISOString(),
+            severity: (i.severity as AdminIncidentItem["severity"]) || "MEDIUM",
+          }));
+          setIncidents(mapped);
         }
       })
       .catch(() => {});
