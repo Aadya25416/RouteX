@@ -67,6 +67,37 @@ uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## Running the Frontend
+
+The RouteX user interface is a Next.js (App Router) web application located in the `frontend/` directory.
+
+### Prerequisites
+- **Node.js**: `>= 20.9.0` (required by Next.js 16 package engine specification)
+- **npm**: Package manager bundled with Node.js
+
+### Setup and Startup
+```bash
+# 1. Navigate to the frontend directory
+cd frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the Next.js development server
+npm run dev
+```
+
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+### Backend Prerequisites & Configuration
+- **API Proxy**: As configured in `frontend/next.config.ts`, Next.js rewrites `/api/v1/*` and `/backend-api/info` requests to `http://127.0.0.1:8000` by default.
+- **Environment Variables**: To point to a different backend address, optionally set `BACKEND_URL` in `frontend/.env.local` (e.g., `BACKEND_URL=http://localhost:8000`). No other environment variables are required.
+- **Backend Dependency**:
+  - Standalone pages such as the landing page (`/`), marketing homepage (`/home`), and authentication portal (`/login`) render fully without the backend running.
+  - The road network map (`/map`) and dashboard views (`/driver`, `/admin`) query backend endpoints (such as `GET /api/v1/roads/geojson?limit=500` and `GET /backend-api/info`). The FastAPI backend must be running for these pages to load live road network geometry and operational data; if the backend is offline, `/map` displays a connection error.
+
+---
+
 ## 4. Running Tests
 
 The test suite runs with `pytest` using the project's virtual environment.
