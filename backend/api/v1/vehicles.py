@@ -13,8 +13,11 @@ from backend.models.logistics import VehicleLocation
 from backend.models.users import User
 from backend.schemas.logistics import (
     LatestVehicleLocationResponse,
+    MultiVehicleTelemetryBatchRequest,
     VehicleCreateRequest,
     VehicleListResponse,
+    VehicleLocationBatchCreateRequest,
+    VehicleLocationBatchResponse,
     VehicleLocationCreateRequest,
     VehicleLocationListResponse,
     VehicleLocationResponse,
@@ -130,6 +133,121 @@ async def ingest_vehicle_location(
         source=loc.source,
         recorded_at=loc.recorded_at,
         created_at=loc.created_at,
+    )
+
+
+@router.post("/{vehicle_id}/locations/batch", response_model=VehicleLocationBatchResponse, status_code=status.HTTP_201_CREATED)
+async def ingest_vehicle_locations_batch(
+    vehicle_id: uuid.UUID,
+    payload: VehicleLocationBatchCreateRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_roles(["driver", "dispatcher", "admin", "service_worker"]))],
+) -> VehicleLocationBatchResponse:
+    """
+    Batch ingests time-series GPS fixes for a vehicle reconnecting after an offline period.
+    Sorts chronologically, deduplicates timestamps, snaps coordinates, and updates latest position in Redis.
+    """
+    service = LogisticsService(session)
+    persisted = await service.record_vehicle_locations_batch(
+        vehicle_id=vehicle_id,
+        payload_locations=payload.locations,
+        actor_id=current_user.id,
+    )
+    items = []
+    for loc in persisted:
+        lat = loc.latitude if hasattr(loc, "latitude") else 0.0
+        lon = loc.longitude if hasattr(loc, "longitude") else 0.0
+        # If coordinates on geometry
+        if lat == 0.0 and loc.geom is not None:
+            from backend.services.evidence_service import extract_evidence_coordinates
+            lat, lon = extract_evidence_coordinates(loc.geom)
+        items.append(
+            VehicleLocationResponse(
+                id=loc.id,
+                vehicle_id=loc.vehicle_id,
+                trip_id=loc.trip_id,
+                latitude=float(lat or 0.0),
+                longitude=float(lon or 0.0),
+                speed_kmh=loc.speed_kmh,
+                heading_deg=loc.heading_deg,
+                matched_segment_id=loc.matched_segment_id,
+                snapping_distance_m=loc.snapping_distance_m,
+                source=loc.source,
+                recorded_at=loc.recorded_at,
+                created_at=loc.created_at,
+            )
+        )
+    return VehicleLocationBatchResponse(
+        ingested_count=len(persisted),
+        rejected_count=len(payload.locations) - len(persisted),
+        items=items,
+    )
+
+
+@router.post("/telemetry/batch", response_model=VehicleLocationBatchResponse, status_code=status.HTTP_201_CREATED)
+async def ingest_multi_vehicle_telemetry(
+    payload: MultiVehicleTelemetryBatchRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    current_user: Annotated[User, Depends(require_roles(["dispatcher", "admin", "service_worker", "driver"]))],
+) -> VehicleLocationBatchResponse:
+    """
+    Batch ingests telemetry across multiple fleet vehicles in one payload.
+    """
+    service = LogisticsService(session)
+    # Group by vehicle_id
+    grouped: dict[uuid.UUID, list[VehicleLocationCreateRequest]] = {}
+    for item in payload.observations:
+        v_id = item.vehicle_id
+        if v_id not in grouped:
+            grouped[v_id] = []
+        loc_req = VehicleLocationCreateRequest(
+            latitude=item.latitude,
+            longitude=item.longitude,
+            recorded_at=item.recorded_at,
+            speed_kmh=item.speed_kmh,
+            heading_deg=item.heading_deg,
+            source=item.source,
+            trip_id=item.trip_id,
+        )
+        grouped[v_id].append(loc_req)
+
+    total_persisted: list[VehicleLocation] = []
+    for v_id, locs in grouped.items():
+        res = await service.record_vehicle_locations_batch(
+            vehicle_id=v_id,
+            payload_locations=locs,
+            actor_id=current_user.id,
+        )
+        total_persisted.extend(res)
+
+    items = []
+    for loc in total_persisted:
+        lat = 0.0
+        lon = 0.0
+        if loc.geom is not None:
+            from backend.services.evidence_service import extract_evidence_coordinates
+            lat, lon = extract_evidence_coordinates(loc.geom)
+        items.append(
+            VehicleLocationResponse(
+                id=loc.id,
+                vehicle_id=loc.vehicle_id,
+                trip_id=loc.trip_id,
+                latitude=float(lat or 0.0),
+                longitude=float(lon or 0.0),
+                speed_kmh=loc.speed_kmh,
+                heading_deg=loc.heading_deg,
+                matched_segment_id=loc.matched_segment_id,
+                snapping_distance_m=loc.snapping_distance_m,
+                source=loc.source,
+                recorded_at=loc.recorded_at,
+                created_at=loc.created_at,
+            )
+        )
+
+    return VehicleLocationBatchResponse(
+        ingested_count=len(total_persisted),
+        rejected_count=len(payload.observations) - len(total_persisted),
+        items=items,
     )
 
 

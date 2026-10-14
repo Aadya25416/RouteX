@@ -82,24 +82,7 @@ async def build_incident_detail_response(incident: Incident, session: AsyncSessi
         )
 
     # Format evidence items
-    evidence = [
-        IncidentEvidenceResponse(
-            id=e.id,
-            incident_id=e.incident_id,
-            file_url=e.file_url,
-            original_filename=e.original_filename,
-            stored_filename=e.stored_filename,
-            media_type=e.media_type,
-            file_size_bytes=e.file_size_bytes,
-            source_type=e.source_type,
-            captured_at=e.captured_at,
-            processing_status=e.processing_status,
-            model_detection_class=e.model_detection_class,
-            model_confidence=e.model_confidence,
-            created_at=e.created_at,
-        )
-        for e in incident.evidence_items
-    ]
+    evidence = [IncidentEvidenceResponse.model_validate(e) for e in incident.evidence_items]
 
     return IncidentDetailResponse(
         id=incident.id,
@@ -344,7 +327,7 @@ async def upload_evidence(
 
     storage = get_storage_service()
     content = await file.read()
-    stored_name, file_url, file_size, mime = await storage.save_evidence_file(
+    stored_name, file_url, file_size, mime, sha256_checksum = await storage.save_evidence_file(
         content=content,
         original_filename=file.filename or "photo.jpg",
         incident_id=incident.id,
@@ -354,12 +337,15 @@ async def upload_evidence(
     evidence = IncidentEvidence(
         id=evidence_id,
         incident_id=incident.id,
+        road_segment_id=incident.road_segment_id,
+        uploader_id=current_user.id,
         file_url=file_url,
         original_filename=file.filename or "photo.jpg",
         stored_filename=stored_name,
         media_type=mime,
         file_size_bytes=file_size,
-        source_type="field_photo",
+        sha256_checksum=sha256_checksum,
+        source_type="FIELD_OFFICER",
         captured_at=captured_at,
         processing_status="PENDING",
     )

@@ -679,9 +679,9 @@ class LogisticsService:
             )
             active_trip_id = active_trip_query.scalar_one_or_none()
 
-        # Snap to nearest road segment
+        # Snap to nearest road segment using configured threshold
         matched_seg_id, snapping_dist = await self.routing_engine.snap_coordinate_to_segment(
-            lat=payload.latitude, lon=payload.longitude, max_distance_m=1000.0
+            lat=payload.latitude, lon=payload.longitude, max_distance_m=settings.GPS_SNAP_THRESHOLD_M
         )
 
         # 1. Update Redis cache with latest location
@@ -714,6 +714,100 @@ class LogisticsService:
         await self.session.commit()
         await self.session.refresh(loc)
         return loc
+
+    async def record_vehicle_locations_batch(
+        self,
+        vehicle_id: uuid.UUID,
+        payload_locations: list[VehicleLocationCreateRequest],
+        actor_id: uuid.UUID | None = None,
+    ) -> list[VehicleLocation]:
+        """
+        Batch ingests time-series GPS fixes for a vehicle.
+        Validates timestamps, deduplicates against existing records, snaps each point to nearby road,
+        and records all valid points in PostgreSQL. Updates Redis with the latest chronologically.
+        """
+        vehicle = await self.get_vehicle(vehicle_id)
+        if not payload_locations:
+            return []
+
+        # Sort chronologically by recorded_at
+        sorted_locations = sorted(payload_locations, key=lambda x: x.recorded_at)
+
+        # Resolve active trip if any
+        active_trip_query = await self.session.execute(
+            select(Trip.id).where(
+                Trip.vehicle_id == vehicle_id,
+                Trip.status.in_([TripStatus.IN_TRANSIT.value, TripStatus.PAUSED.value]),
+            ).order_by(Trip.started_at.desc()).limit(1)
+        )
+        active_trip_id = active_trip_query.scalar_one_or_none()
+
+        persisted_locs: list[VehicleLocation] = []
+        newest_point: tuple[VehicleLocationCreateRequest, str | None, float | None] | None = None
+
+        for item in sorted_locations:
+            if item.recorded_at.tzinfo is None:
+                continue
+
+            # Check if an identical timestamp observation already exists for this vehicle
+            existing = await self.session.execute(
+                select(VehicleLocation.id).where(
+                    VehicleLocation.vehicle_id == vehicle_id,
+                    VehicleLocation.recorded_at == item.recorded_at,
+                )
+            )
+            if existing.scalar_one_or_none():
+                continue
+
+            # Snap coordinate using configured threshold
+            matched_seg_id, snapping_dist = await self.routing_engine.snap_coordinate_to_segment(
+                lat=item.latitude,
+                lon=item.longitude,
+                max_distance_m=settings.GPS_SNAP_THRESHOLD_M,
+            )
+
+            trip_id = item.trip_id or active_trip_id
+            pt_geom = ST_SetSRID(ST_MakePoint(item.longitude, item.latitude), 4326)
+            loc = VehicleLocation(
+                vehicle_id=vehicle_id,
+                trip_id=trip_id,
+                geom=pt_geom,
+                speed_kmh=item.speed_kmh,
+                heading_deg=item.heading_deg,
+                matched_segment_id=matched_seg_id,
+                snapping_distance_m=snapping_dist,
+                source=item.source,
+                recorded_at=item.recorded_at,
+            )
+            self.session.add(loc)
+            persisted_locs.append(loc)
+
+            if newest_point is None or item.recorded_at > newest_point[0].recorded_at:
+                newest_point = (item, matched_seg_id, snapping_dist)
+
+        if persisted_locs:
+            await self.session.commit()
+            for loc in persisted_locs:
+                await self.session.refresh(loc)
+
+            # Update Redis with newest location if newer than current Redis cache
+            if newest_point:
+                item, seg_id, dist_m = newest_point
+                latest_in_cache = await self.get_latest_vehicle_location(vehicle_id)
+                if not latest_in_cache or item.recorded_at >= latest_in_cache.recorded_at:
+                    await self._cache_latest_location_redis(
+                        vehicle_id=vehicle_id,
+                        lat=item.latitude,
+                        lon=item.longitude,
+                        speed_kmh=item.speed_kmh,
+                        heading_deg=item.heading_deg,
+                        matched_segment_id=seg_id,
+                        snapping_distance_m=dist_m,
+                        recorded_at=item.recorded_at,
+                        trip_id=item.trip_id or active_trip_id,
+                    )
+
+        return persisted_locs
 
     async def _cache_latest_location_redis(
         self,

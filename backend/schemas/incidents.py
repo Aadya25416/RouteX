@@ -58,18 +58,32 @@ class IncidentResolveRequest(BaseModel):
 class IncidentEvidenceResponse(BaseModel):
     """Metadata response for uploaded evidence."""
     id: uuid.UUID
-    incident_id: uuid.UUID
+    incident_id: uuid.UUID | None = None
     file_url: str
     original_filename: str | None = None
     stored_filename: str | None = None
     media_type: str | None = None
     file_size_bytes: int | None = None
+    sha256_checksum: str | None = None
     source_type: str
+    source_provider: str | None = None
+    uploader_id: uuid.UUID | None = None
+    road_segment_id: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    acquisition_metadata: dict | None = None
+    validation_status: str = "VALIDATED"
     captured_at: datetime | None = None
     processing_status: str
+    claimed_by: str | None = None
+    claimed_at: datetime | None = None
+    processed_at: datetime | None = None
+    processing_error: str | None = None
     model_detection_class: str | None = None
     model_confidence: float | None = None
+    model_metadata: dict | None = None
     created_at: datetime
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

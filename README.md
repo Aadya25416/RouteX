@@ -348,7 +348,183 @@ curl -X POST http://localhost:8000/api/v1/vehicles/{VEHICLE_ID}/locations \
 
 ---
 
-## 10. Data Conventions & Guardrails
+## 10. Data Collection & Ingestion Layer
+
+The Data Collection & Ingestion Layer provides resilient, authenticated intake and validation pipelines for multi-modal observations along the logistics corridor. Raw binary payloads are stored in durable filesystem/object storage (`data/evidence` mounted into Docker containers via volume `evidence_data`), with PostGIS capturing spatial geometries and metadata.
+
+```
+                      ┌──────────────────────────────────────────────┐
+                      │            DATA COLLECTION LAYER             │
+                      └──────────────────────────────────────────────┘
+                                              │
+    ┌──────────────────────┬──────────────────┴────────────────┬───────────────────────────┐
+    │                      │                                   │                           │
+    ▼                      ▼                                   ▼                           ▼
+Field Officer App     Copernicus CDSE /               Open-Meteo API                Vehicle Telemetry
+ (Multipart Upload)    Sentinel-2 Scenes              (Corridor Grid)              (Single/Batch Ping)
+    │                      │                                   │                           │
+    │ Magic Bytes, SHA-256 │ GeoJSON Footprint, CRS            │ Genuine Normalizer        │ Road Snapping, Speed,
+    │ Lat/Lon Validation   │ Provenance Tracking               │ (No 0.0 Fabrication)      │ Directionality
+    ▼                      ▼                                   ▼                           ▼
+[POST /api/v1/evidence] [POST /api/v1/satellite]      [WeatherService]              [POST /api/v1/vehicles]
+         │                     │                               │                           │
+         └──────────┬──────────┘                               │                           │
+                    ▼                                          ▼                           ▼
+         Durable File Storage                       PostgreSQL / PostGIS          Redis (Hot Cache)
+           (`data/evidence`)                        - incident_evidence           - latest_location
+                    │                               - weather_observations        - traffic_summary
+                    │                               - traffic_observations
+                    ▼
+         ML Worker Integration
+         (GET /api/v1/ml/evidence/pending)
+         (POST /api/v1/ml/evidence/{id}/claim)
+         (POST /api/v1/ml/evidence/{id}/result)
+```
+
+### 10.1 Unified Raw Evidence Ingestion (Deliverable A)
+- **Sources Supported:** `FIELD_OFFICER` (ground hazard reports, obstruction photos) and `SATELLITE` (remote sensing rasters, optical scenes).
+- **Validation & Security:** Verifies binary magic bytes (JPEG `\xff\xd8\xff`, PNG `\x89PNG\r\n\x1a\n`, TIFF `II*\x00` / `MM\x00*`), calculates SHA-256 integrity checksum, enforces 25MB file size limits, sanitizes filenames to prevent path traversal, and ensures safe idempotent deduplication on repeated uploads.
+- **Frontend Dashboard Integration:** Seamlessly handles multi-photo uploads from the field officer incident report interface (`frontend/src/app/driver/report-incident/page.tsx`).
+
+```bash
+# Upload field hazard photo with coordinates
+curl -X POST http://localhost:8000/api/v1/evidence/upload \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer1@nerlink.org" \
+  -F "file=@rockfall.jpg;type=image/jpeg" \
+  -F "source_type=FIELD_OFFICER" \
+  -F "source_provider=field_app_v2" \
+  -F "latitude=26.1445" \
+  -F "longitude=91.7362" \
+  -F "captured_at=2026-10-14T10:30:00Z"
+```
+
+### 10.2 Satellite Ingestion Adapter (Deliverable B)
+- **Supported Providers:** `copernicus_sentinel2` (Copernicus Data Space Ecosystem Sentinel-2 MSI L2A) and `mock_satellite` (local testing).
+- **Provenance & Geometries:** Preserves full scene identifiers, acquisition timestamps, sensor modes, cloud cover percentages, spatial resolution, and GeoJSON polygon footprints indexed in PostGIS as EPSG:4326 geometries.
+- **Audit Logging:** Every scene ingestion records status, checksum, and errors in `satellite_ingestion_logs`.
+- **Honest Provider Documentation:** Direct automated search/download against the live Copernicus Data Space Ecosystem requires CDSE user credentials (`CDSE_USERNAME`, `CDSE_PASSWORD`). When unconfigured, the system gracefully operates via the authenticated product registration endpoint (`POST /api/v1/satellite/ingest`) and `MockSatelliteAdapter`.
+
+```bash
+# Ingest Copernicus Sentinel-2 MSI scene product
+curl -X POST http://localhost:8000/api/v1/satellite/ingest \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" \
+  -F "file=@S2A_MSIL2A_scene.tif;type=image/tiff" \
+  -F "scene_id=S2A_MSIL2A_20261014T044019_N0500_R083_T46RDQ" \
+  -F "provider=copernicus_sentinel2" \
+  -F "cloud_cover_percent=12.4" \
+  -F "resolution_m=10.0" \
+  -F "crs=EPSG:4326" \
+  -F 'footprint_geojson={"type":"Polygon","coordinates":[[[91.5,26.1],[92.8,26.1],[92.8,27.7],[91.5,27.7],[91.5,26.1]]]}'
+```
+
+### 10.3 Weather Ingestion (Deliverable C)
+- **Provider:** Genuine Open-Meteo external weather API (`https://api.open-meteo.com/v1/forecast`).
+- **Corridor Sampling:** Samples representative corridor waypoints (Guwahati, Rangia, Tezpur, Balipara, Bhalukpong, Bomdila, Dirang, Sela Pass, Tawang) within configured bounds rather than hammering individual road segments.
+- **Data Integrity:** Only persists fields returned by the provider (`temperature_c`, `rainfall_mm`, `wind_speed_kmh`, `wind_gusts_kmh`, `snowfall_cm`, `weather_code`, `visibility_m`). Never converts missing measurements into `0.0`.
+- **Outage Resilience:** Upstream timeouts or 5xx outages are safely logged and leave existing historical observations intact.
+- **CLI & Background Sync:** Includes dedicated operational script `python -m backend.scripts.ingest_weather`.
+
+```bash
+# Trigger weather refresh across corridor sample points
+curl -X POST http://localhost:8000/api/v1/weather/refresh \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org"
+
+# Inspect latest observations
+curl -s http://localhost:8000/api/v1/weather/latest?limit=5 \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" | jq .
+
+# Check weather service health and freshness
+curl -s http://localhost:8000/api/v1/weather/status \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" | jq .
+```
+
+### 10.4 Vehicle GPS Coordinates & Traffic Ingestion (Deliverable D)
+- **Endpoints:** Single-ping (`POST /api/v1/vehicles/{id}/locations`) and multi-point offline batch sync (`POST /api/v1/vehicles/{id}/locations/batch` or `/telemetry/batch`).
+- **Spatial Road Association:** Associates GPS coordinates with nearby road segments using PostGIS distance calculations with a configurable snap threshold (`GPS_SNAP_THRESHOLD_M = 100.0` meters).
+- **Integrity Preservation:** Unmatched coordinates (e.g. vehicles in forest clearings or unmapped areas) preserve their original latitude/longitude with `matched_segment_id = null`.
+- **Traffic Aggregation:** Aggregates recent GPS observations on road segments over configurable time windows, computing average observed speed, congestion ratio relative to base speed, sample count, and honest data confidence metrics (`HIGH` for >= 5 samples, `MEDIUM`, `LOW`, `INSUFFICIENT_DATA`).
+
+```bash
+# Batch upload vehicle GPS telemetry (e.g. after reconnecting from dead zone)
+curl -X POST http://localhost:8000/api/v1/vehicles/{VEHICLE_ID}/locations/batch \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: driver" \
+  -H "X-User-Email: driver@nerlink.org" \
+  -d '{
+    "locations": [
+      {"latitude": 26.14365, "longitude": 91.74172, "speed_kmh": 35.0, "recorded_at": "2026-10-14T10:00:00Z"},
+      {"latitude": 26.14249, "longitude": 91.74202, "speed_kmh": 28.5, "recorded_at": "2026-10-14T10:01:00Z"}
+    ]
+  }'
+
+# Inspect road segment traffic condition
+curl -s http://localhost:8000/api/v1/traffic/segments/{ROAD_SEGMENT_ID} \
+  -H "X-User-Role: dispatcher" \
+  -H "X-User-Email: dispatcher@nerlink.org" | jq .
+```
+
+### 10.5 Machine Learning Team Handoff Contract (Deliverable E)
+The backend decouples data ingestion from inference workloads, providing a pull-based worker contract with atomic claiming, lease timeouts, and authenticated image streaming:
+
+1. **Discovery (`GET /api/v1/ml/evidence/pending`)**:
+   Returns pending unanalyzed evidence and any abandoned tasks whose worker leases expired (`ML_CLAIM_TIMEOUT_MINUTES=15`).
+   ```json
+   {
+     "total_pending": 1,
+     "tasks": [
+       {
+         "evidence_id": "a95b8630-1c94-4d2b-a8d6-fc0572e09341",
+         "source_type": "FIELD_OFFICER",
+         "source_provider": "field_app_v2",
+         "media_type": "image/jpeg",
+         "file_size_bytes": 104520,
+         "sha256_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+         "download_url": "/api/v1/ml/evidence/a95b8630-1c94-4d2b-a8d6-fc0572e09341/download",
+         "processing_status": "PENDING",
+         "created_at": "2026-10-14T10:30:00Z",
+         "coordinates": {"latitude": 26.1445, "longitude": 91.7362}
+       }
+     ]
+   }
+   ```
+2. **Atomic Claiming (`POST /api/v1/ml/evidence/{id}/claim`)**:
+   Claims the evidence record using `SELECT ... FOR UPDATE`, transitioning state to `IN_PROGRESS` and setting `claimed_by` and `claimed_at`. Concurrent claims return `409 Conflict`.
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/ml/evidence/{EVIDENCE_ID}/claim \
+     -H "Content-Type: application/json" \
+     -H "X-User-Role: ml_service" \
+     -H "X-User-Email: yolov11-worker@nerlink.internal" \
+     -d '{"worker_id": "yolo_worker_node_01"}'
+   ```
+3. **Binary Image Download (`GET /api/v1/ml/evidence/{id}/download`)**:
+   Streams raw binary payload securely to authorized internal service workers.
+4. **Result Reporting (`POST /api/v1/ml/evidence/{id}/result`)**:
+   Worker records completion status, detected hazard classes, confidence, and bounding boxes. If inference fails (e.g. CUDA OOM), reporting `FAILED` records error diagnosis without deleting the raw evidence.
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/ml/evidence/{EVIDENCE_ID}/result \
+     -H "Content-Type: application/json" \
+     -H "X-User-Role: ml_service" \
+     -H "X-User-Email: yolov11-worker@nerlink.internal" \
+     -d '\''{
+       "worker_id": "yolo_worker_node_01",
+       "status": "COMPLETED",
+       "model_detection_class": "LANDSLIDE_DEBRIS",
+       "model_confidence": 0.912,
+       "model_metadata": {
+         "model_version": "nerlink-yolov11-v2.1",
+         "bounding_boxes": [{"class": "debris", "conf": 0.912, "bbox": [120, 80, 450, 310]}]
+       }
+     }'\''
+   ```
+
+---
+
+## 11. Data Conventions & Guardrails
 
 1. **Persistent Source of Truth**: PostgreSQL with PostGIS is the sole store of record for road geometry, incidents, vehicles, deliveries, and trips. Redis stores transient state, latest GPS positions, and streams.
 2. **Initial Status**: Imported roads default to `UNKNOWN`. Never label roads `OPEN` without operational evidence.

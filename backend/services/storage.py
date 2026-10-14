@@ -1,6 +1,7 @@
 """Storage abstraction for incident photographic evidence."""
 
 import abc
+import hashlib
 import os
 import uuid
 from pathlib import Path
@@ -15,26 +16,37 @@ MAGIC_SIGNATURES: dict[str, list[bytes]] = {
     "image/jpeg": [b"\xff\xd8\xff"],
     "image/png": [b"\x89PNG\r\n\x1a\n"],
     "image/webp": [b"RIFF"],
+    "image/tiff": [b"II*\x00", b"MM\x00*"],
+    "image/geotiff": [b"II*\x00", b"MM\x00*"],
 }
 
 SAFE_EXTENSIONS_BY_MIME: dict[str, str] = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    "image/tiff": "tif",
+    "image/geotiff": "tif",
 }
+
+
+def compute_sha256(content: bytes) -> str:
+    """Computes hexadecimal SHA-256 digest of binary content."""
+    return hashlib.sha256(content).hexdigest()
 
 
 def detect_mime_type(content: bytes) -> str | None:
     """Inspects raw file header bytes to reliably determine media type."""
-    if len(content) < 12:
+    if len(content) < 4:
         return None
 
     if content.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
     if content.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
-    if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+    if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP":
         return "image/webp"
+    if content.startswith(b"II*\x00") or content.startswith(b"MM\x00*"):
+        return "image/tiff"
 
     return None
 
@@ -47,11 +59,11 @@ class StorageService(abc.ABC):
         self,
         content: bytes,
         original_filename: str,
-        incident_id: uuid.UUID,
-    ) -> tuple[str, str, int, str]:
+        incident_id: uuid.UUID | None = None,
+    ) -> tuple[str, str, int, str, str]:
         """
         Saves raw file content and returns:
-        (stored_filename, storage_ref_url, file_size_bytes, validated_mime_type)
+        (stored_filename, storage_ref_url, file_size_bytes, validated_mime_type, sha256_checksum)
         """
         pass
 
@@ -78,8 +90,8 @@ class LocalStorageService(StorageService):
         self,
         content: bytes,
         original_filename: str,
-        incident_id: uuid.UUID,
-    ) -> tuple[str, str, int, str]:
+        incident_id: uuid.UUID | None = None,
+    ) -> tuple[str, str, int, str, str]:
         file_size = len(content)
         if file_size == 0:
             raise HTTPException(
@@ -107,7 +119,8 @@ class LocalStorageService(StorageService):
         ext = SAFE_EXTENSIONS_BY_MIME.get(mime_type, "bin")
         # Generate safe server-controlled filename (never use client-provided path)
         unique_token = uuid.uuid4().hex[:12]
-        stored_filename = f"{incident_id}_{unique_token}.{ext}"
+        prefix = str(incident_id) if incident_id else "evidence"
+        stored_filename = f"{prefix}_{unique_token}.{ext}"
         target_path = self.media_dir / stored_filename
 
         try:
@@ -118,8 +131,13 @@ class LocalStorageService(StorageService):
                 detail=f"Failed to persist evidence file to storage: {exc}",
             )
 
-        file_url = f"/api/v1/incidents/{incident_id}/evidence/{stored_filename}/download"
-        return stored_filename, file_url, file_size, mime_type
+        checksum = compute_sha256(content)
+        file_url = (
+            f"/api/v1/incidents/{incident_id}/evidence/{stored_filename}/download"
+            if incident_id
+            else f"/api/v1/evidence/{stored_filename}/download"
+        )
+        return stored_filename, file_url, file_size, mime_type, checksum
 
     async def get_evidence_file(self, stored_filename: str) -> tuple[bytes, str]:
         # Guard against path traversal attacks

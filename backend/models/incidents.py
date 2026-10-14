@@ -197,37 +197,81 @@ class IncidentEvidence(Base, UUIDPrimaryKeyMixin):
     """Supporting photographs and candidate detections for incidents."""
     __tablename__ = "incident_evidence"
 
-    incident_id: Mapped[uuid.UUID] = mapped_column(
+    # Optional incident_id allows standalone raw evidence / satellite scene ingestion
+    incident_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("incidents.id", ondelete="CASCADE"),
         index=True,
-        nullable=False,
+        nullable=True,
     )
     file_url: Mapped[str] = mapped_column(String(512), nullable=False)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     stored_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     media_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    sha256_checksum: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
 
     source_type: Mapped[str] = mapped_column(
         String(50),
-        default="field_photo",
+        default="FIELD_OFFICER",
         nullable=False,
-        comment="field_photo, satellite_scene, public_feed",
+        comment="FIELD_OFFICER, SATELLITE, field_photo, satellite_scene, public_feed",
     )
+    source_provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    uploader_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    road_segment_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("road_segments.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    location_geom: Mapped[object | None] = mapped_column(
+        Geometry(geometry_type="POINT", srid=4326, spatial_index=True),
+        nullable=True,
+    )
+    footprint_geom: Mapped[object | None] = mapped_column(
+        Geometry(geometry_type="GEOMETRY", srid=4326, spatial_index=True),
+        nullable=True,
+    )
+    acquisition_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    validation_status: Mapped[str] = mapped_column(
+        String(30),
+        default="VALIDATED",
+        nullable=False,
+        comment="VALIDATED, REJECTED, SUSPICIOUS, PENDING_VALIDATION",
+    )
+
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     processing_status: Mapped[str] = mapped_column(
         String(50),
         default="PENDING",
         nullable=False,
-        comment="PENDING, PROCESSED, FAILED",
+        comment="PENDING, IN_PROGRESS, COMPLETED, FAILED",
     )
+    claimed_by: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     model_detection_class: Mapped[str | None] = mapped_column(String(50), nullable=True)
     model_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     model_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
-    incident: Mapped["Incident"] = relationship(
+    incident: Mapped["Incident | None"] = relationship(
         "Incident",
         back_populates="evidence_items",
+    )
+    road_segment: Mapped["RoadSegment | None"] = relationship(  # noqa: F821
+        "RoadSegment",
+    )
+    uploader: Mapped["User | None"] = relationship(  # noqa: F821
+        "User",
+        foreign_keys=[uploader_id],
     )

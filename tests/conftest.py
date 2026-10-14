@@ -48,3 +48,13 @@ def admin_headers() -> dict[str, str]:
 def driver_headers() -> dict[str, str]:
     return {"X-User-Role": "driver", "X-User-Email": "driver1@nerlink.org"}
 
+
+@pytest.fixture
+def ml_service_headers() -> dict[str, str]:
+    return {"X-User-Role": "ml_service", "X-User-Email": "ml_worker_01@nerlink.org"}
+
+
+@pytest.fixture
+def service_worker_headers() -> dict[str, str]:
+    return {"X-User-Role": "service_worker", "X-User-Email": "worker_etl@nerlink.org"}
+

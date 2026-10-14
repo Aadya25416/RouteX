@@ -28,7 +28,12 @@ from backend.models.logistics import (
 )
 from backend.models.routing import RouteRecommendation, RouteMode
 from backend.models.risk import RiskPrediction
-from backend.models.observations import WeatherObservation, SatelliteEvent
+from backend.models.observations import (
+    WeatherObservation,
+    SatelliteEvent,
+    TrafficObservation,
+    SatelliteIngestionLog,
+)
 from backend.models.audit import Alert, AuditLog
 
 __all__ = [
@@ -64,6 +69,8 @@ __all__ = [
     "RiskPrediction",
     "WeatherObservation",
     "SatelliteEvent",
+    "TrafficObservation",
+    "SatelliteIngestionLog",
     "Alert",
     "AuditLog",
 ]

@@ -45,13 +45,39 @@ class Settings(BaseSettings):
     OSM_NETWORK_TYPE: str = "drive"
     OSM_DATA_DIR: str = "data/osm"
 
-    # Evidence Storage & Incident Management (Phase 2)
+    # Evidence Storage & Incident Management (Data Collection)
     MEDIA_DIR: str = "data/evidence"
     MAX_UPLOAD_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB
-    ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
+    ALLOWED_IMAGE_TYPES: list[str] = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/tiff",
+        "image/geotiff",
+    ]
     INCIDENT_ROAD_MATCH_RADIUS_M: float = 150.0  # Search radius in meters
     REDIS_STREAM_INCIDENTS: str = "events:incidents"
     REDIS_STREAM_ROADS: str = "events:roads"
+    REDIS_STREAM_EVIDENCE: str = "events:evidence"
+
+    # Weather Ingestion (Open-Meteo)
+    OPEN_METEO_API_URL: str = "https://api.open-meteo.com/v1/forecast"
+    WEATHER_REQUEST_TIMEOUT_SECONDS: float = 10.0
+    WEATHER_REFRESH_INTERVAL_MINUTES: int = 60
+    WEATHER_SAMPLE_GRID_STEP_DEG: float = 0.5
+
+    # GPS & Telemetry Ingestion
+    GPS_SNAP_THRESHOLD_M: float = 100.0
+    GPS_MAX_SPEED_KMH: float = 250.0
+    GPS_BATCH_MAX_SIZE: int = 200
+
+    # ML Processing Contract
+    ML_CLAIM_TIMEOUT_MINUTES: int = 15
+    ML_SERVICE_ROLE: str = "ml_service"
+
+    # Satellite Ingestion Adapter
+    SATELLITE_PROVIDER: str = "copernicus_sentinel2"
+    SATELLITE_MAX_CLOUD_COVER_PERCENT: float = 40.0
 
     @field_validator("CORRIDOR_MIN_LAT", "CORRIDOR_MAX_LAT")
     @classmethod

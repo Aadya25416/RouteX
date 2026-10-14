@@ -83,6 +83,26 @@ class VehicleLocationResponse(BaseModel):
     created_at: datetime
 
 
+class VehicleLocationBatchCreateRequest(BaseModel):
+    """Batch GPS observations for a vehicle reconnecting after offline period."""
+    locations: list[VehicleLocationCreateRequest] = Field(min_length=1, max_length=200)
+
+
+class MultiVehicleLocationItem(VehicleLocationCreateRequest):
+    vehicle_id: uuid.UUID
+
+
+class MultiVehicleTelemetryBatchRequest(BaseModel):
+    """Batch GPS observations across multiple vehicles."""
+    observations: list[MultiVehicleLocationItem] = Field(min_length=1, max_length=500)
+
+
+class VehicleLocationBatchResponse(BaseModel):
+    ingested_count: int
+    rejected_count: int = 0
+    items: list[VehicleLocationResponse]
+
+
 class VehicleLocationListResponse(BaseModel):
     total: int
     items: list[VehicleLocationResponse]

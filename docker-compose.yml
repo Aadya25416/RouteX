@@ -55,6 +55,9 @@ services:
       CORRIDOR_MIN_LON: ${CORRIDOR_MIN_LON:-91.50}
       CORRIDOR_MAX_LAT: ${CORRIDOR_MAX_LAT:-27.70}
       CORRIDOR_MAX_LON: ${CORRIDOR_MAX_LON:-92.80}
+      MEDIA_DIR: ${MEDIA_DIR:-data/evidence}
+    volumes:
+      - evidence_data:/app/data/evidence
     depends_on:
       db:
         condition: service_healthy
@@ -64,3 +67,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  evidence_data:

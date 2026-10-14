@@ -79,7 +79,7 @@ async def get_current_user(
 
     # If user not found in DB, check if development X-User-Role is provided to auto-provision dev/test user
     if not user:
-        if x_user_role or (token_val and token_val in ["admin", "dispatcher", "field_officer", "driver"]):
+        if x_user_role or (token_val and token_val in ["admin", "dispatcher", "field_officer", "driver", "ml_service", "service_worker"]):
             role = x_user_role or token_val
             dev_email = user_identifier if "@" in user_identifier else f"{role}_{user_identifier[:8]}@nerlink.internal"
             # Double check existing
