@@ -27,7 +27,7 @@ export default function AdminFooter() {
             </span>
             <span className="text-[#8F9E97] hidden sm:inline" aria-hidden="true">•</span>
             <span className="text-[11px] text-[#71877D] font-medium">
-              NER-LINK Operations Hub
+              RouteX Operations Hub
             </span>
           </div>
 
@@ -108,7 +108,7 @@ export default function AdminFooter() {
           </nav>
 
           <div className="text-[11px] text-[#8F9E97] whitespace-nowrap self-start lg:self-auto">
-            © {CURRENT_YEAR} RouteX / NER-LINK · Road network data © OpenStreetMap
+            © {CURRENT_YEAR} RouteX · Road network data © OpenStreetMap contributors
           </div>
         </div>
       </div>

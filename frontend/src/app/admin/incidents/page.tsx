@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { api, ApiError } from "@/lib/api";
 import { INITIAL_ADMIN_INCIDENTS } from "@/data/adminData";
 import { AdminIncidentItem, AdminIncidentStatus } from "@/types/admin";
 
@@ -30,8 +31,7 @@ export default function IncidentManagementPage() {
 
   // Fetch real incidents if backend is reachable
   useEffect(() => {
-    fetch("/api/v1/incidents?limit=50", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<{ items: BackendIncidentItem[]; total: number }>("/api/v1/incidents?limit=50")
       .then((data) => {
         if (data && data.items && data.items.length > 0) {
           const mapped: AdminIncidentItem[] = data.items.map((item: BackendIncidentItem) => ({
@@ -42,7 +42,7 @@ export default function IncidentManagementPage() {
             reportedBy: item.source === "FIELD_REPORT" ? "Field Officer" : "Driver Report",
             reporterRole: item.source === "FIELD_REPORT" ? "Field Officer" : "Driver",
             timeAgo: "Recently",
-            timestamp: item.observed_at || item.created_at,
+            timestamp: item.observed_at || item.created_at || new Date().toISOString(),
             status: item.status || "SUBMITTED",
             severity: item.severity || "HIGH",
             description: item.description || "Reported corridor condition",
@@ -67,42 +67,69 @@ export default function IncidentManagementPage() {
     return true;
   });
 
+  const [actionErrorMsg, setActionErrorMsg] = useState<string | null>(null);
+
   const handleUpdateStatus = async (newStatus: AdminIncidentStatus) => {
     if (!selectedIncident) return;
+    setActionErrorMsg(null);
 
-    // Update in local state
-    setIncidents((prev) =>
-      prev.map((i) =>
-        i.id === selectedIncident.id
-          ? { ...i, status: newStatus, reviewNotes: reviewNote || i.reviewNotes }
-          : i
-      )
-    );
+    let endpoint = "";
+    let payload: unknown = {};
 
-    // Attempt backend update
-    try {
-      const endpointMap: { [key: string]: string } = {
-        CONFIRMED: `/api/v1/incidents/${selectedIncident.id}/confirm`,
-        REJECTED: `/api/v1/incidents/${selectedIncident.id}/reject`,
-        UNDER_REVIEW: `/api/v1/incidents/${selectedIncident.id}/review`,
-        RESOLVED: `/api/v1/incidents/${selectedIncident.id}/resolve`,
+    if (newStatus === "UNDER_REVIEW") {
+      endpoint = `/api/v1/incidents/${selectedIncident.id}/review`;
+      payload = { review_notes: reviewNote || "Under review by corridor dispatch" };
+    } else if (newStatus === "CONFIRMED") {
+      endpoint = `/api/v1/incidents/${selectedIncident.id}/confirm`;
+      payload = {
+        review_notes: reviewNote || "Hazard confirmed by dispatch operator",
+        road_impacts: selectedIncident.roadSegmentId
+          ? [{ road_segment_id: selectedIncident.roadSegmentId, assessed_impact: "BLOCKED" }]
+          : [],
       };
-      const endpoint = endpointMap[newStatus];
-      if (endpoint) {
-        await fetch(endpoint, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ review_notes: reviewNote }),
-        });
-      }
-    } catch {
-      // Handled locally
+    } else if (newStatus === "REJECTED") {
+      endpoint = `/api/v1/incidents/${selectedIncident.id}/reject`;
+      const reason =
+        reviewNote.trim().length >= 3
+          ? reviewNote.trim()
+          : "Rejected during verification: unverified or duplicate report.";
+      payload = { rejection_reason: reason };
+    } else if (newStatus === "RESOLVED") {
+      endpoint = `/api/v1/incidents/${selectedIncident.id}/resolve`;
+      const notes =
+        reviewNote.trim().length >= 3
+          ? reviewNote.trim()
+          : "Incident resolved and cleared by field operations.";
+      payload = { resolution_notes: notes, verified_clearance: true };
     }
 
-    setActionSuccessMsg(`Incident ${selectedIncident.id} updated to status "${newStatus}".`);
-    setSelectedIncident(null);
-    setReviewNote("");
-    setTimeout(() => setActionSuccessMsg(null), 4000);
+    try {
+      if (endpoint) {
+        await api.post(endpoint, payload);
+      }
+
+      // Update in local state upon backend success
+      setIncidents((prev) =>
+        prev.map((i) =>
+          i.id === selectedIncident.id
+            ? { ...i, status: newStatus, reviewNotes: reviewNote || i.reviewNotes }
+            : i
+        )
+      );
+
+      setActionSuccessMsg(`Incident ${selectedIncident.id} updated to status "${newStatus}".`);
+      setSelectedIncident(null);
+      setReviewNote("");
+      setTimeout(() => setActionSuccessMsg(null), 4000);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+          ? err.message
+          : "Failed to update incident.";
+      setActionErrorMsg(msg);
+    }
   };
 
   return (
@@ -317,6 +344,12 @@ export default function IncidentManagementPage() {
                 </div>
               </div>
 
+              {actionErrorMsg && (
+                <div className="p-2.5 mb-3 rounded-lg bg-[#FEEEEE] border border-[#FCA5A5] text-[#DC4848] text-xs font-semibold">
+                  ⚠ {actionErrorMsg}
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#E8EFE5]">
                 <button
@@ -327,7 +360,7 @@ export default function IncidentManagementPage() {
                   Reject Report
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus("UNDER_REVIEW")}
@@ -341,6 +374,13 @@ export default function IncidentManagementPage() {
                     className="px-4 py-1.5 rounded-full bg-[#12432A] text-white text-xs font-bold hover:bg-[#0b2f1c] transition-colors cursor-pointer"
                   >
                     Confirm Hazard ✓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus("RESOLVED")}
+                    className="px-3.5 py-1.5 rounded-full border border-[#B7E4CD] bg-[#DDF4E8] text-[#12432A] text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                  >
+                    Resolve Hazard
                   </button>
                 </div>
               </div>

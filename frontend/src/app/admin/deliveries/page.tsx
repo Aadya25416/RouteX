@@ -2,16 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { api } from "@/lib/api";
 import { INITIAL_DELIVERIES } from "@/data/adminData";
 import { DeliveryConsignment } from "@/types/admin";
 
 interface BackendTripItem {
   id: string;
-  delivery?: { origin_name?: string; destination_name?: string };
+  delivery?: { origin_name?: string; destination_name?: string; priority?: string };
   driver_id?: string;
-  vehicle?: { license_plate?: string };
+  vehicle?: { registration_number?: string; vehicle_code?: string };
   status?: string;
   completed_at?: string;
+}
+
+interface TripListResponse {
+  total: number;
+  items: BackendTripItem[];
 }
 
 export default function AdminDeliveriesPage() {
@@ -19,18 +25,19 @@ export default function AdminDeliveriesPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Connect to backend trips API if available
+  // Connect to backend trips API via authenticated client
   useEffect(() => {
-    fetch("/api/v1/trips?limit=50", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    let isMounted = true;
+    api
+      .get<TripListResponse>("/api/v1/trips?limit=50")
       .then((data) => {
-        if (data && data.items && data.items.length > 0) {
+        if (isMounted && data && data.items && data.items.length > 0) {
           const mapped: DeliveryConsignment[] = data.items.map((t: BackendTripItem) => ({
             id: `TR-${t.id.slice(0, 4).toUpperCase()}`,
             origin: t.delivery?.origin_name || "Guwahati",
             destination: t.delivery?.destination_name || "Tawang",
             driver: t.driver_id ? "Assigned Driver" : "Unassigned",
-            vehicle: t.vehicle?.license_plate || "Freight Truck",
+            vehicle: t.vehicle?.registration_number || t.vehicle?.vehicle_code || "Freight Truck",
             status:
               t.status === "COMPLETED"
                 ? "Completed"
@@ -38,12 +45,16 @@ export default function AdminDeliveriesPage() {
                 ? "In Progress"
                 : "Assigned",
             etaOrCompleted: t.completed_at ? "Completed" : "Scheduled",
-            priority: "HIGH",
+            priority: (t.delivery?.priority || "HIGH") as DeliveryConsignment["priority"],
           }));
           setDeliveries(mapped);
         }
       })
       .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filtered = deliveries.filter((d) => {

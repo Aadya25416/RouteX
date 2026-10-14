@@ -2,11 +2,38 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import DriverLayout from "@/components/driver/DriverLayout";
 import { INITIAL_DRIVER_TRIP, GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
 import { getStatusColor } from "@/components/RoadMap";
+import { api, ApiError } from "@/lib/api";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
+
+interface BackendTripItem {
+  id: string;
+  vehicle_id: string;
+  delivery_id: string;
+  driver_id: string;
+  status: string;
+  estimated_duration_s?: number;
+  estimated_distance_m?: number;
+  vehicle?: {
+    id: string;
+    registration_number: string;
+    vehicle_code: string;
+  };
+  delivery?: {
+    id: string;
+    pickup_address?: string;
+    dropoff_address?: string;
+  };
+}
+
+interface TripListResponse {
+  total: number;
+  items: BackendTripItem[];
+}
 
 // Dynamically import RoadMap
 const RoadMap = dynamic(() => import("@/components/RoadMap"), {
@@ -20,22 +47,72 @@ const RoadMap = dynamic(() => import("@/components/RoadMap"), {
 });
 
 export default function ActiveNavigationPage() {
+  const router = useRouter();
   const [trip] = useState(INITIAL_DRIVER_TRIP);
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
   const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
   const [selectedRoad, setSelectedRoad] = useState<RoadFeatureProperties | null>(null);
+  const [activeBackendTrip, setActiveBackendTrip] = useState<BackendTripItem | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [telemetryStatus, setTelemetryStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setBackendInfo(data))
+    api.get<BackendInfoResponse>("/backend-api/info")
+      .then(setBackendInfo)
       .catch(() => {});
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setRoadsData(data))
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+      .then(setRoadsData)
+      .catch(() => {});
+
+    api.get<TripListResponse>("/api/v1/trips?limit=10")
+      .then((res) => {
+        const inTransit = res.items.find((t) => t.status === "IN_TRANSIT" || t.status === "PLANNED");
+        if (inTransit) setActiveBackendTrip(inTransit);
+      })
       .catch(() => {});
   }, []);
+
+  const handleCompleteTrip = async () => {
+    if (!activeBackendTrip) {
+      router.push("/driver/trip-complete");
+      return;
+    }
+    setIsCompleting(true);
+    setActionError(null);
+    try {
+      await api.post(`/api/v1/trips/${activeBackendTrip.id}/complete`);
+      router.push("/driver/trip-complete");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setActionError(err.message);
+      } else {
+        setActionError("Failed to complete trip. Please check connection.");
+      }
+      setIsCompleting(false);
+    }
+  };
+
+  const handleSendLocation = async () => {
+    if (!activeBackendTrip?.vehicle_id) return;
+    setTelemetryStatus("Sending GPS ping...");
+    try {
+      await api.post(`/api/v1/vehicles/${activeBackendTrip.vehicle_id}/location`, {
+        latitude: 26.9,
+        longitude: 92.2,
+        recorded_at: new Date().toISOString(),
+        speed_kmh: 42.5,
+        heading_deg: 35.0,
+        source: "mobile_gps",
+        trip_id: activeBackendTrip.id,
+      });
+      setTelemetryStatus("GPS position synced");
+      setTimeout(() => setTelemetryStatus(null), 3000);
+    } catch (err) {
+      setTelemetryStatus(err instanceof ApiError ? err.message : "GPS ping failed");
+    }
+  };
 
   const stopMarkers = trip.stops.map((s) => ({
     lngLat: s.coordinates,
@@ -224,6 +301,16 @@ export default function ActiveNavigationPage() {
 
             {/* Action buttons at bottom of panel */}
             <div className="pt-4 mt-4 border-t border-[#E8EFE5] flex flex-col gap-2">
+              {activeBackendTrip?.vehicle_id && (
+                <button
+                  type="button"
+                  onClick={handleSendLocation}
+                  className="w-full py-2 px-3 bg-[#EAF2E7] hover:bg-[#DDF4E8] text-[#12432A] border border-[#B7E4CD] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <span>📡</span>
+                  <span>{telemetryStatus || "Send GPS Ping"}</span>
+                </button>
+              )}
               <Link
                 href="/driver/report-incident"
                 className="w-full py-2.5 px-4 bg-[#FFF8EB] hover:bg-[#FCE1B6] text-[#A66007] border border-[#FCE1B6] rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
@@ -231,13 +318,24 @@ export default function ActiveNavigationPage() {
                 <span>⚠️</span>
                 <span>Report Road Hazard</span>
               </Link>
-              <Link
-                href="/driver/trip-complete"
-                className="w-full py-2.5 px-4 bg-[#12432A] hover:bg-[#0d3420] text-white rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              <button
+                type="button"
+                disabled={isCompleting}
+                onClick={handleCompleteTrip}
+                className="w-full py-2.5 px-4 bg-[#12432A] hover:bg-[#0d3420] text-white rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <span>Complete Trip</span>
-                <span>→</span>
-              </Link>
+                {isCompleting ? (
+                  <span>Completing Trip...</span>
+                ) : (
+                  <>
+                    <span>Complete Trip</span>
+                    <span>→</span>
+                  </>
+                )}
+              </button>
+              {actionError && (
+                <p className="text-red-600 text-xs text-center mt-1 font-semibold">{actionError}</p>
+              )}
             </div>
           </div>
         </div>

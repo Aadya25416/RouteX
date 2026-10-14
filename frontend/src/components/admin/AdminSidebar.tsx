@@ -109,21 +109,37 @@ function IconSystemSettings() {
   );
 }
 
+import { useAuth, UserRole } from "@/context/AuthContext";
+
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const currentRole = user?.role;
 
-  const navItems = [
-    { label: "Overview", href: "/admin", icon: <IconOverview />, id: "overview" },
-    { label: "Live Map", href: "/admin/map", icon: <IconLiveMap />, id: "map" },
-    { label: "Route Planning", href: "/admin/route-planning", icon: <IconRoutePlanning />, id: "route-planning" },
-    { label: "Incidents", href: "/admin/incidents", icon: <IconIncidents />, id: "incidents" },
-    { label: "Field Reports", href: "/admin/field-reports", icon: <IconFieldReports />, id: "field-reports" },
-    { label: "Users & Roles", href: "/admin/users", icon: <IconUsersRoles />, id: "users" },
-    { label: "Deliveries", href: "/admin/deliveries", icon: <IconDeliveries />, id: "deliveries" },
-    { label: "Analytics & Reports", href: "/admin/analytics", icon: <IconAnalytics />, id: "analytics" },
-    { label: "Data Sources", href: "/admin/data-sources", icon: <IconDataSources />, id: "data-sources" },
-    { label: "System Settings", href: "/admin/settings", icon: <IconSystemSettings />, id: "settings" },
+  interface NavItem {
+    label: string;
+    href: string;
+    icon: React.ReactNode;
+    id: string;
+    roles?: UserRole[];
+  }
+
+  const navItems: NavItem[] = [
+    { label: "Overview", href: "/admin", icon: <IconOverview />, id: "overview", roles: ["admin", "dispatcher", "field_officer"] },
+    { label: "Live Map", href: "/admin/map", icon: <IconLiveMap />, id: "map", roles: ["admin", "dispatcher", "field_officer"] },
+    { label: "Route Planning", href: "/admin/route-planning", icon: <IconRoutePlanning />, id: "route-planning", roles: ["admin", "dispatcher"] },
+    { label: "Incidents", href: "/admin/incidents", icon: <IconIncidents />, id: "incidents", roles: ["admin", "dispatcher", "field_officer"] },
+    { label: "Field Reports", href: "/admin/field-reports", icon: <IconFieldReports />, id: "field-reports", roles: ["admin", "dispatcher", "field_officer"] },
+    { label: "Users & Roles", href: "/admin/users", icon: <IconUsersRoles />, id: "users", roles: ["admin"] },
+    { label: "Deliveries", href: "/admin/deliveries", icon: <IconDeliveries />, id: "deliveries", roles: ["admin", "dispatcher"] },
+    { label: "Analytics & Reports", href: "/admin/analytics", icon: <IconAnalytics />, id: "analytics", roles: ["admin", "dispatcher"] },
+    { label: "Data Sources", href: "/admin/data-sources", icon: <IconDataSources />, id: "data-sources", roles: ["admin", "dispatcher"] },
+    { label: "System Settings", href: "/admin/settings", icon: <IconSystemSettings />, id: "settings", roles: ["admin"] },
   ];
+
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || (currentRole && item.roles.includes(currentRole))
+  );
 
   return (
     <aside className="rx-admin-sidebar" aria-label="System Admin Navigation">
@@ -135,7 +151,7 @@ export default function AdminSidebar() {
         </Link>
 
         <nav className="rx-admin-nav" aria-label="Main system menu">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive =
               item.href === "/admin"
                 ? pathname === "/admin"

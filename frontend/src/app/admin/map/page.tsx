@@ -7,6 +7,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
 import { getStatusColor } from "@/components/RoadMap";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
+import { api } from "@/lib/api";
 
 // Dynamically import RoadMap
 const RoadMap = dynamic(() => import("@/components/RoadMap"), {
@@ -27,13 +28,11 @@ export default function AdminLiveMapPage() {
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<BackendInfoResponse>("/backend-api/info")
       .then((data) => setBackendInfo(data))
       .catch(() => {});
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
       .then((data) => setRoadsData(data))
       .catch(() => {});
   }, []);

@@ -22,7 +22,7 @@ export default function HomeFooter() {
             </p>
             <div className="footer-org-tag">
               <span>🌐</span>
-              <span>NER-LINK Infrastructure Network</span>
+              <span>RouteX Intelligent Network</span>
             </div>
           </div>
 
@@ -101,7 +101,7 @@ export default function HomeFooter() {
               </li>
               <li>
                 <Link href="/home#about" className="footer-link">
-                  About NER-LINK
+                  About RouteX
                 </Link>
               </li>
             </ul>
@@ -139,7 +139,7 @@ export default function HomeFooter() {
         {/* Bottom Bar */}
         <div className="footer-bottom-bar">
           <div className="footer-copyright">
-            © {CURRENT_YEAR} RouteX / NER-LINK · Road network data © OpenStreetMap contributors
+            © {CURRENT_YEAR} RouteX · Road network data © OpenStreetMap contributors
           </div>
           <div className="footer-disclaimer">
             Built for accessibility &amp; logistical resilience in Northeast India.
