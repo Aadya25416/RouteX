@@ -1,0 +1,583 @@
+/* ============================================================
+   RouteX / NER-LINK Isolated Landing Page CSS
+   Namespaced under .routex-landing-root to prevent any collateral
+   styling leaks into /map, /login, or other application routes.
+   ============================================================ */
+
+.routex-landing-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #06201A;
+  color: #E4F3EA;
+  font-family: var(--font-geist-mono, "JetBrains Mono", "Courier New", monospace);
+  user-select: none;
+}
+
+/* ─── Topographic Canvas Background ────────────────────────── */
+.routex-landing-root .routex-canvas-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ─── Hairline HUD Frame & Corners ─────────────────────────── */
+.routex-landing-root .routex-hud-frame {
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(22, 167, 121, 0.16);
+  pointer-events: none;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.routex-landing-root .hud-corner {
+  position: absolute;
+  font-size: 14px;
+  line-height: 1;
+  color: #16A779;
+  font-family: monospace;
+  opacity: 0.85;
+  user-select: none;
+}
+
+.routex-landing-root .hud-corner-tl { top: -7px; left: -5px; }
+.routex-landing-root .hud-corner-tr { top: -7px; right: -5px; }
+.routex-landing-root .hud-corner-bl { bottom: -7px; left: -5px; }
+.routex-landing-root .hud-corner-br { bottom: -7px; right: -5px; }
+
+.routex-landing-root .hud-section {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+/* ─── Top Left Metadata & Status Log ───────────────────────── */
+.routex-landing-root .hud-top-left {
+  top: 14px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.routex-landing-root .hud-meta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.routex-landing-root .hud-brand-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #E4F3EA;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.routex-landing-root .hud-meta-line {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.routex-landing-root .hud-meta-key {
+  color: #4E877A;
+  min-width: 76px;
+}
+
+.routex-landing-root .hud-meta-val {
+  color: #8FCFC0;
+}
+
+/* ─── Status Log ───────────────────────────────────────────── */
+.routex-landing-root .routex-status-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.routex-landing-root .routex-status-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.routex-landing-root .routex-status-hidden {
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+}
+
+.routex-landing-root .routex-status-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.routex-landing-root .routex-status-id {
+  color: #4E877A;
+  min-width: 18px;
+}
+
+.routex-landing-root .routex-status-label {
+  color: #8FCFC0;
+  min-width: 90px;
+}
+
+.routex-landing-root .routex-status-val {
+  font-weight: 500;
+}
+
+/* ─── Top Center ROUTEX Watermark ──────────────────────────── */
+.routex-landing-root .hud-top-center {
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.routex-landing-root .hud-watermark {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #16A779;
+}
+
+/* ─── Top Right Navigation & Legend ────────────────────────── */
+.routex-landing-root .hud-top-right {
+  top: 14px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.routex-landing-root .hud-auth-row {
+  pointer-events: auto;
+}
+
+.routex-landing-root .hud-signin-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #E4F3EA;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.routex-landing-root .hud-signin-link:hover,
+.routex-landing-root .hud-signin-link:focus-visible {
+  color: #8FCFC0;
+  text-decoration: underline;
+  outline: none;
+}
+
+.routex-landing-root .hud-phase-label {
+  font-size: 10px;
+  color: #4E877A;
+  margin-bottom: 8px;
+}
+
+.routex-landing-root .hud-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.routex-landing-root .hud-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 10px;
+  color: #E4F3EA;
+}
+
+.routex-landing-root .hud-legend-text {
+  opacity: 0.85;
+}
+
+.routex-landing-root .hud-legend-bar {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* ─── Bottom Left Segments Counter ─────────────────────────── */
+.routex-landing-root .hud-bottom-left {
+  bottom: 14px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.routex-landing-root .hud-counter-label {
+  font-size: 10px;
+  color: #4E877A;
+}
+
+.routex-landing-root .hud-label-dim {
+  color: #F4B64A;
+}
+
+.routex-landing-root .hud-counter-number {
+  font-size: clamp(20px, 2.5vw, 26px);
+  font-weight: 700;
+  color: #E4F3EA;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* ─── Bottom Center Coordinates Readout ────────────────────── */
+.routex-landing-root .hud-bottom-center {
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.routex-landing-root .hud-coord-readout {
+  font-size: 11px;
+  color: #4E877A;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* ─── Bottom Right Sparkline ───────────────────────────────── */
+.routex-landing-root .hud-bottom-right {
+  bottom: 14px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.routex-landing-root .hud-sparkline-label {
+  font-size: 10px;
+  color: #4E877A;
+}
+
+.routex-landing-root .hud-sparkline-svg {
+  width: 150px;
+  height: 18px;
+  opacity: 0.85;
+}
+
+/* ─── Central Stage (RouteX 3D Title + Subtitle + Button) ─── */
+.routex-landing-root .center-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+  padding: 0 16px;
+}
+
+.routex-landing-root .routex-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.routex-landing-root .routex-title-3d {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  font-family: var(--font-geist-sans, "Inter", sans-serif);
+  font-size: clamp(68px, 11vw, 150px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  position: relative;
+  perspective: 1200px;
+  opacity: 0;
+  transform: perspective(1200px) translateZ(-260px) rotateX(15deg) scale(0.72);
+}
+
+.routex-landing-root .routex-title-visible {
+  animation: routexEntrance 1.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes routexEntrance {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) translateZ(-260px) rotateX(15deg) scale(0.72);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) translateZ(0) rotateX(0deg) scale(1);
+  }
+}
+
+.routex-landing-root .routex-char {
+  display: inline-block;
+  transform-style: preserve-3d;
+  will-change: transform;
+  cursor: default;
+  user-select: none;
+}
+
+.routex-landing-root .routex-char-route {
+  color: #E4F3EA;
+  text-shadow:
+    2px 2px 0 #0d4a37,
+    4px 4px 0 #0a3d2e,
+    6px 6px 0 #072e22,
+    8px 8px 18px rgba(0, 0, 0, 0.65);
+}
+
+.routex-landing-root .routex-char-x {
+  color: #16A779;
+  text-shadow:
+    2px 2px 0 #0a4d36,
+    4px 4px 0 #083d2a,
+    6px 6px 0 #052a1d,
+    8px 8px 18px rgba(0, 0, 0, 0.65),
+    0 0 25px rgba(22, 167, 121, 0.4);
+}
+
+.routex-landing-root .routex-light-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 45%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 100%
+  );
+  animation: lightSweep 1.5s ease-out 2.3s both;
+  pointer-events: none;
+}
+
+@keyframes lightSweep {
+  0%   { opacity: 0; transform: translateX(-100%); }
+  50%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(100%); }
+}
+
+.routex-landing-root .routex-corridor-desc {
+  margin: 0;
+  font-family: var(--font-geist-mono, "JetBrains Mono", monospace);
+  font-size: clamp(12px, 1.3vw, 14px);
+  color: #8FCFC0;
+  line-height: 1.5;
+  font-weight: 400;
+  text-align: center;
+  opacity: 0.92;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Get Started Button ───────────────────────────────────── */
+.routex-landing-root .routex-btn-container {
+  pointer-events: auto;
+  margin-top: 18px;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.routex-landing-root .routex-btn-hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+.routex-landing-root .routex-btn-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.routex-landing-root .routex-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  border: 1px solid #16A779;
+  background-color: rgba(6, 32, 26, 0.85);
+  color: #E4F3EA;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-geist-mono, "JetBrains Mono", monospace);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 16px rgba(22, 167, 121, 0.15);
+  outline: none;
+}
+
+.routex-landing-root .routex-pill-btn:hover,
+.routex-landing-root .routex-pill-btn:focus-visible {
+  border-color: #8FCFC0;
+  background-color: rgba(22, 167, 121, 0.2);
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(22, 167, 121, 0.35);
+  transform: translateY(-1px);
+}
+
+.routex-landing-root .routex-pill-btn:focus-visible {
+  outline: 2px solid #8FCFC0;
+  outline-offset: 3px;
+}
+
+.routex-landing-root .routex-btn-arrow {
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+.routex-landing-root .routex-pill-btn:hover .routex-btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ─── Scroll To Explore ────────────────────────────────────── */
+.routex-landing-root .scroll-area {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  pointer-events: auto;
+}
+
+.routex-landing-root .routex-scroll-explore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #8FCFC0;
+  font-family: var(--font-geist-mono, "JetBrains Mono", monospace);
+  padding: 4px;
+  outline: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.routex-landing-root .routex-scroll-explore:hover,
+.routex-landing-root .routex-scroll-explore:focus-visible {
+  color: #E4F3EA;
+  transform: translateY(-2px);
+}
+
+.routex-landing-root .routex-scroll-explore:focus-visible {
+  outline: 2px solid #8FCFC0;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.routex-landing-root .routex-scroll-text {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.routex-landing-root .routex-mouse-icon {
+  width: 14px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  padding-top: 3px;
+}
+
+.routex-landing-root .routex-mouse-wheel {
+  width: 2px;
+  height: 5px;
+  background-color: currentColor;
+  border-radius: 1px;
+  animation: mouseWheel 1.5s infinite;
+}
+
+@keyframes mouseWheel {
+  0%   { transform: translateY(0); opacity: 1; }
+  50%  { transform: translateY(6px); opacity: 0.3; }
+  51%  { transform: translateY(0); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── Mobile Responsiveness (360px - 768px) ───────────────── */
+@media (max-width: 768px) {
+  .routex-landing-root .routex-hud-frame {
+    inset: 10px;
+  }
+  .routex-landing-root .hud-legend,
+  .routex-landing-root .hud-coord-readout,
+  .routex-landing-root .hud-sparkline-svg,
+  .routex-landing-root .hud-watermark {
+    display: none !important;
+  }
+  .routex-landing-root .hud-top-left {
+    top: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+  .routex-landing-root .hud-top-right {
+    top: 10px;
+    right: 10px;
+  }
+  .routex-landing-root .hud-bottom-left {
+    bottom: 10px;
+    left: 10px;
+  }
+  .routex-landing-root .hud-bottom-right {
+    bottom: 10px;
+    right: 10px;
+  }
+  .routex-landing-root .hud-bottom-center {
+    display: none;
+  }
+  .routex-landing-root .routex-title-3d {
+    font-size: clamp(52px, 16vw, 84px);
+  }
+  .routex-landing-root .routex-corridor-desc {
+    font-size: 11px;
+    padding: 0 12px;
+  }
+  .routex-landing-root .scroll-area {
+    bottom: max(10px, env(safe-area-inset-bottom, 10px));
+  }
+}
+
+/* ─── Reduced Motion Support ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .routex-landing-root .routex-title-3d {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .routex-landing-root .routex-light-sweep,
+  .routex-landing-root .routex-mouse-wheel {
+    animation: none !important;
+  }
+  .routex-landing-root .routex-btn-container {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .routex-landing-root .routex-status-row {
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

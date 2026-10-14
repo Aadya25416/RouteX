@@ -1,0 +1,254 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import DriverLayout from "@/components/driver/DriverLayout";
+import { INITIAL_DRIVER_TRIP, GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
+import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
+
+// Dynamically import RoadMap to avoid SSR MapLibre errors
+const RoadMap = dynamic(() => import("@/components/RoadMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[240px] bg-[#EAF2E7] rounded-xl flex items-center justify-center text-xs text-[#71877D]">
+      Initializing MapLibre preview...
+    </div>
+  ),
+});
+
+export default function DriverDashboardPage() {
+  const [trip] = useState(INITIAL_DRIVER_TRIP);
+  const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
+  const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
+
+  // Fetch real GeoJSON if available (without failing if offline)
+  useEffect(() => {
+    fetch("/backend-api/info", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setBackendInfo(data))
+      .catch(() => {});
+
+    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setRoadsData(data))
+      .catch(() => {});
+  }, []);
+
+  const stopMarkers = trip.stops.map((s) => ({
+    lngLat: s.coordinates,
+    label: s.name,
+    isDestination: s.isDestination,
+    isNext: s.isNext,
+  }));
+
+  const hazardMarker = trip.hazardDetails
+    ? {
+        lngLat: trip.hazardDetails.coordinates,
+        label: "Landslide Risk",
+        type: trip.hazardDetails.type,
+      }
+    : null;
+
+  return (
+    <DriverLayout>
+      <div className="flex flex-col gap-5 max-w-7xl mx-auto w-full">
+        {/* Top Header Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-extrabold text-[#193B32]">My Route</h1>
+            <div className="relative">
+              <select
+                aria-label="Trip date filter"
+                defaultValue="today"
+                className="appearance-none bg-white border border-[#DCE5D8] text-xs font-semibold text-[#193B32] py-1.5 pl-3 pr-7 rounded-full cursor-pointer focus:outline-none focus:border-[#16A779] shadow-xs"
+              >
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="all">All Trips</option>
+              </select>
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#71877D] text-[10px]">
+                ▼
+              </span>
+            </div>
+          </div>
+
+          <Link href="/driver/navigation" className="rx-btn-primary" id="start-nav-btn">
+            <span>Start Navigation</span>
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+
+        {/* Central Trip Card: Left Timeline & Right Map */}
+        <div className="rx-card grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+          {/* Left Column: Trip Overview & Stops Timeline */}
+          <div className="lg:col-span-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-bold text-[#193B32]">
+                  {trip.origin} → {trip.destination}
+                </h2>
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#DDF4E8] text-[#12432A]">
+                  Active Trip
+                </span>
+              </div>
+              <p className="text-xs text-[#71877D] font-medium mb-6">
+                {trip.corridor} · {trip.totalDistanceKm} km · Est. {trip.estimatedDuration}
+              </p>
+
+              {/* Stops Timeline */}
+              <div className="relative pl-6 space-y-7 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#DCE5D8]">
+                {trip.stops.map((stop) => {
+                  let badgeClass = "bg-gray-100 text-gray-700";
+                  if (stop.status === "Departed" || stop.status === "Completed") {
+                    badgeClass = "bg-[#DDF4E8] text-[#176B4D]";
+                  } else if (stop.status === "Next stop") {
+                    badgeClass = "bg-[#FFF8EB] text-[#B45309]";
+                  } else if (stop.status === "Destination") {
+                    badgeClass = "bg-zinc-100 text-zinc-600";
+                  }
+
+                  const isPassed = stop.status === "Departed" || stop.status === "Completed";
+                  const isCurrent = stop.status === "Next stop";
+
+                  return (
+                    <div key={stop.id} className="relative flex items-center justify-between group">
+                      {/* Timeline Dot */}
+                      <span
+                        className={`absolute -left-6 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white transition-all ${
+                          isPassed
+                            ? "bg-[#16A779] ring-2 ring-[#DDF4E8]"
+                            : isCurrent
+                            ? "bg-[#F4B64A] ring-2 ring-[#FFF8EB]"
+                            : "bg-[#89939A]"
+                        }`}
+                      />
+
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-[#193B32]">{stop.name}</span>
+                        <span className="text-xs text-[#71877D]">{stop.time}</span>
+                      </div>
+
+                      <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${badgeClass}`}>
+                        {stop.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-6 mt-4 border-t border-[#E8EFE5] flex items-center justify-between text-xs text-[#71877D]">
+              <span>Assigned Vehicle: <strong className="text-[#193B32]">{trip.vehicleNumber}</strong></span>
+              <span className="font-mono text-[11px]">{trip.id}</span>
+            </div>
+          </div>
+
+          {/* Right Column: Route Map Preview */}
+          <div className="lg:col-span-6 relative rounded-2xl overflow-hidden border border-[#DCE5D8] min-h-[300px] h-[340px] bg-[#EAF2E7]">
+            <RoadMap
+              backendInfo={backendInfo}
+              roadsData={roadsData}
+              routeCoordinates={GUWAHATI_TAWANG_CORRIDOR_COORDS}
+              stopMarkers={stopMarkers}
+              hazardMarker={hazardMarker}
+              customCenter={[92.1, 26.9]}
+              customZoom={7.3}
+              hideNavControls={true}
+              className="w-full h-full relative"
+            />
+
+            {/* Recenter / Locate Button Overlay */}
+            <Link
+              href="/driver/navigation"
+              title="Open full interactive navigation map"
+              className="absolute bottom-3 right-3 z-10 w-9 h-9 bg-white rounded-xl shadow-md border border-[#DCE5D8] flex items-center justify-center text-[#193B32] hover:bg-[#F9FAF6] transition-colors"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
+        {/* Bottom Quick Incident Action Buttons */}
+        <div>
+          <h2 className="text-xs font-bold text-[#71877D] uppercase tracking-wider mb-2.5">
+            Quick Incident Reporting
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            {/* 1. Report Hazard */}
+            <Link
+              href="/driver/report-incident?type=landslide"
+              className="rx-card flex flex-col items-center justify-center p-4 hover:border-[#16A779] hover:shadow-md transition-all text-center group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#FEEEEE] flex items-center justify-center text-[#DC4848] mb-2 group-hover:scale-105 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-[#193B32]">Report Hazard</span>
+              <span className="text-[11px] text-[#71877D]">Unsafe road condition</span>
+            </Link>
+
+            {/* 2. Road Block */}
+            <Link
+              href="/driver/report-incident?type=road_block"
+              className="rx-card flex flex-col items-center justify-center p-4 hover:border-[#16A779] hover:shadow-md transition-all text-center group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#FEEEEE] flex items-center justify-center text-[#DC4848] mb-2 group-hover:scale-105 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-[#193B32]">Road Block</span>
+              <span className="text-[11px] text-[#71877D]">Obstruction ahead</span>
+            </Link>
+
+            {/* 3. Weather Issue */}
+            <Link
+              href="/driver/report-incident?type=weather"
+              className="rx-card flex flex-col items-center justify-center p-4 hover:border-[#16A779] hover:shadow-md transition-all text-center group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#E0F2FE] flex items-center justify-center text-[#0284C7] mb-2 group-hover:scale-105 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-[#193B32]">Weather Issue</span>
+              <span className="text-[11px] text-[#71877D]">Weather related</span>
+            </Link>
+
+            {/* 4. Other Issue */}
+            <Link
+              href="/driver/report-incident?type=other"
+              className="rx-card flex flex-col items-center justify-center p-4 hover:border-[#16A779] hover:shadow-md transition-all text-center group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#E2E8F0] flex items-center justify-center text-[#475569] mb-2 group-hover:scale-105 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-[#193B32]">Other Issue</span>
+              <span className="text-[11px] text-[#71877D]">Report other problem</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </DriverLayout>
+  );
+}

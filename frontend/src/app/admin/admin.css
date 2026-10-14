@@ -1,0 +1,352 @@
+/* Scoped System Admin Dashboard Styles (RouteX / NER-LINK) */
+
+:root {
+  --rx-admin-bg: #F1F4E8;
+  --rx-admin-surface: #FFFFFF;
+  --rx-admin-surface-soft: #FAFAF2;
+  --rx-admin-border: #DCE5D8;
+  --rx-admin-border-subtle: #E8EFE5;
+  --rx-admin-text-main: #193B32;
+  --rx-admin-text-sub: #71877D;
+  --rx-admin-primary: #176B4D;
+  --rx-admin-primary-dark: #12432A;
+  --rx-admin-emerald: #16A779;
+  --rx-admin-mint: #DDF4E8;
+  --rx-admin-mint-border: #B7E4CD;
+  --rx-admin-amber: #F4B64A;
+  --rx-admin-orange: #F07838;
+  --rx-admin-red: #DC4848;
+  --rx-admin-gray: #89939A;
+  --rx-admin-shadow: 0 1px 3px rgba(25, 59, 50, 0.05), 0 4px 12px rgba(25, 59, 50, 0.03);
+  --rx-admin-shadow-md: 0 4px 16px rgba(25, 59, 50, 0.07);
+}
+
+.rx-admin-root {
+  background-color: var(--rx-admin-bg);
+  color: var(--rx-admin-text-main);
+  min-height: 100vh;
+  display: flex;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Sidebar */
+.rx-admin-sidebar {
+  width: 240px;
+  background-color: #FAFBF7;
+  border-right: 1px solid var(--rx-admin-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 12px;
+  flex-shrink: 0;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.rx-admin-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 16px 12px;
+  text-decoration: none;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rx-admin-logo-route {
+  color: #12432A;
+}
+
+.rx-admin-logo-x {
+  color: #16A779;
+}
+
+.rx-admin-logo-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: #DDF4E8;
+  color: #12432A;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: 0.05em;
+}
+
+.rx-admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rx-admin-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rx-admin-text-sub);
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.rx-admin-link:hover {
+  background-color: rgba(221, 244, 232, 0.45);
+  color: var(--rx-admin-text-main);
+}
+
+.rx-admin-link.active {
+  background-color: var(--rx-admin-mint);
+  color: #12432A;
+  font-weight: 700;
+  border-color: var(--rx-admin-mint-border);
+}
+
+.rx-admin-link.active svg {
+  color: #16A779;
+  stroke: #16A779;
+}
+
+.rx-admin-sidebar-bottom {
+  border-top: 1px solid var(--rx-admin-border-subtle);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Main Content Area */
+.rx-admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--rx-admin-bg);
+}
+
+/* Topbar */
+.rx-admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background-color: transparent;
+  gap: 16px;
+  z-index: 30;
+}
+
+.rx-admin-search {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+.rx-admin-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  background-color: var(--rx-admin-surface);
+  border: 1px solid var(--rx-admin-border);
+  border-radius: 9999px;
+  font-size: 13px;
+  color: var(--rx-admin-text-main);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease;
+}
+
+.rx-admin-search-input:focus {
+  border-color: var(--rx-admin-emerald);
+}
+
+.rx-admin-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8F9E97;
+  pointer-events: none;
+}
+
+.rx-admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rx-admin-bell-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--rx-admin-surface);
+  border: 1px solid var(--rx-admin-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rx-admin-text-sub);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.rx-admin-bell-btn:hover {
+  background-color: #f5f8f3;
+}
+
+.rx-admin-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rx-admin-surface);
+  border: 1px solid var(--rx-admin-border);
+  padding: 4px 12px 4px 4px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rx-admin-text-main);
+}
+
+.rx-admin-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #12432A;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Page container */
+.rx-admin-page {
+  padding: 8px 28px 28px 28px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Admin Card */
+.rx-admin-card {
+  background-color: var(--rx-admin-surface);
+  border: 1px solid var(--rx-admin-border);
+  border-radius: 18px;
+  box-shadow: var(--rx-admin-shadow);
+  padding: 20px;
+}
+
+/* Primary Button */
+.rx-admin-btn-primary {
+  background-color: var(--rx-admin-primary-dark);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.rx-admin-btn-primary:hover {
+  background-color: #0b2f1c;
+  transform: translateY(-1px);
+}
+
+.rx-admin-btn-outline {
+  background-color: var(--rx-admin-surface);
+  color: var(--rx-admin-text-main);
+  border: 1px solid var(--rx-admin-border);
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.rx-admin-btn-outline:hover {
+  background-color: #f7faf5;
+}
+
+/* Table styles */
+.rx-admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--rx-admin-border);
+  border-radius: 14px;
+  background: var(--rx-admin-surface);
+}
+
+.rx-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.rx-admin-table th {
+  background-color: #FAFBF7;
+  color: var(--rx-admin-text-sub);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rx-admin-border);
+}
+
+.rx-admin-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rx-admin-border-subtle);
+  color: var(--rx-admin-text-main);
+}
+
+.rx-admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rx-admin-table tr:hover td {
+  background-color: #F8FAF5;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .rx-admin-sidebar {
+    width: 68px;
+    padding: 16px 8px;
+  }
+  .rx-admin-sidebar .rx-sidebar-text,
+  .rx-admin-logo-route,
+  .rx-admin-logo-x,
+  .rx-admin-logo-badge {
+    display: none;
+  }
+  .rx-admin-link {
+    justify-content: center;
+    padding: 10px;
+  }
+  .rx-admin-topbar {
+    padding: 12px 16px;
+  }
+  .rx-admin-page {
+    padding: 6px 16px 20px 16px;
+  }
+}
