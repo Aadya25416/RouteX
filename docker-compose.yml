@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-8000}:8000"
+    env_file:
+      - .env
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -58,6 +60,14 @@ services:
       MEDIA_DIR: ${MEDIA_DIR:-data/evidence}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-nerlink-super-secret-jwt-key-change-in-prod-1234567890}
       ALLOW_DEV_AUTH_HEADERS: ${ALLOW_DEV_AUTH_HEADERS:-true}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-rx_refresh_token}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-${ADMIN_BOOTSTRAP_EMAIL:-admin@routex.ai}}
+      ADMIN_NAME: ${ADMIN_NAME:-${ADMIN_BOOTSTRAP_NAME:-RouteX Administrator}}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-${ADMIN_BOOTSTRAP_PASSWORD:-}}
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_EMAIL:-${ADMIN_BOOTSTRAP_EMAIL:-admin@routex.ai}}
+      ADMIN_BOOTSTRAP_NAME: ${ADMIN_NAME:-${ADMIN_BOOTSTRAP_NAME:-RouteX Administrator}}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_PASSWORD:-${ADMIN_BOOTSTRAP_PASSWORD:-}}
     volumes:
       - ./backend:/app/backend
       - evidence_data:/app/data/evidence

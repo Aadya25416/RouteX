@@ -31,6 +31,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis_health = await check_redis_connection()
     logger.info(f"Redis status: {redis_health.get('status')}")
 
+    # Ensure administrator account exists if credentials are provided in environment (.env)
+    admin_password = settings.ADMIN_PASSWORD or settings.ADMIN_BOOTSTRAP_PASSWORD
+    if settings.ADMIN_EMAIL and admin_password:
+        try:
+            from backend.scripts.bootstrap_admin import bootstrap_admin
+            result = await bootstrap_admin(
+                email=settings.ADMIN_EMAIL,
+                full_name=settings.ADMIN_NAME,
+                password=admin_password,
+                reset_password=False,
+                is_interactive=False,
+            )
+            logger.info(f"Administrator account '{settings.ADMIN_EMAIL}' status: {result['action']}")
+        except Exception as exc:
+            logger.warning(f"Administrator environment bootstrap check skipped: {exc}")
+
     yield
 
     logger.info(f"Shutting down {settings.APP_NAME}...")
@@ -54,7 +70,7 @@ def create_app() -> FastAPI:
     # Cross-Origin Resource Sharing
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Restrict in production
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

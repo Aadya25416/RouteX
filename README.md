@@ -27,10 +27,16 @@ cp .env.example .env
 # 2. Build and start containers in the background
 docker compose up -d --build
 
-# 3. Check container status
+# 3. Apply database migrations
+docker compose exec api alembic upgrade head
+
+# 4. Provision the local Administrator account (prompts interactively or auto-generates credentials)
+docker compose exec api python -m backend.scripts.bootstrap_admin
+
+# 5. Check container status
 docker compose ps
 
-# 4. View application logs
+# 6. View application logs
 docker compose logs -f api
 ```
 
@@ -556,7 +562,54 @@ NER-LINK implements enterprise credential authentication, Argon2id password hash
 - **Token Refresh**: `POST /api/v1/auth/refresh` (single-use rotation with replay attack defense)
 - **Current Identity**: `GET /api/v1/auth/me` (safe user profile, DB authoritative role)
 - **Logout**: `POST /api/v1/auth/logout` (invalidates session and clears cookie)
+- **Driver Self-Registration**: `POST /api/v1/auth/register` (publicly available for drivers)
 - **User Administration**: `POST/GET/PATCH /api/v1/users` (Admin only)
+
+### Administrator Account Provisioning & Teammate Setup
+
+#### Why Admin Login Fails on Fresh Clones (`401 Invalid username/email or password`)
+- Drivers can self-register directly through the web UI (`POST /api/v1/auth/register`), which writes driver records to the local database.
+- Administrator accounts are **not publicly registerable**.
+- User accounts and credentials reside in PostgreSQL inside the local Docker named volume (`postgres_data`). Docker volumes are isolated to each physical host and are never checked into Git.
+- On a fresh clone or teammate's machine, the database starts empty. Attempting to log in as admin before running migrations and bootstrapping returns `401 Unauthorized` (generic failure to prevent user enumeration).
+
+#### Provisioning an Administrator Account
+Run the idempotent bootstrap CLI to create or verify the administrator:
+
+```bash
+# Inside Docker Compose (reads ADMIN_EMAIL & ADMIN_PASSWORD from .env):
+docker compose exec api python -m backend.scripts.bootstrap_admin
+
+# Outside Docker (Local uv virtualenv):
+uv run python -m backend.scripts.bootstrap_admin
+```
+
+#### Updating / Resetting an Existing Administrator Password
+To update an existing admin's password (for example, after changing `ADMIN_PASSWORD` in `.env`):
+
+```bash
+# Apply new password from .env:
+docker compose exec api python -m backend.scripts.bootstrap_admin --reset-password
+# (or locally: uv run python -m backend.scripts.bootstrap_admin --reset-password)
+
+# Or update with a secure interactive prompt (recommended for production):
+docker compose exec api python -m backend.scripts.bootstrap_admin \
+  --email admin@routex.ai \
+  --reset-password
+```
+
+#### CLI Capabilities & Safety Guarantees:
+- **Strict Idempotency**: If the administrator account already exists, running without `--reset-password` is a safe no-op. It will **not** silently overwrite passwords, revoke sessions, or create duplicate accounts on server restart or redeploy.
+- **Explicit Password Reset**: Passing `--reset-password` reads the updated password from `.env` (or prompts securely via `getpass`), hashes it with Argon2id, revokes all active sessions and refresh tokens, and records an audit log.
+- **Role Conflict Prevention**: If an account with that email already exists with another role (e.g., `driver`), the script immediately aborts with an error to prevent accidental privilege escalation.
+- **Interactive Password Entry**: When run interactively without `--password` or when omitted from `.env`, the script securely prompts via `getpass` with confirmation. If left blank, it generates a high-entropy 20-character secret displayed once. User-entered passwords are never printed to terminal stdout.
+
+### Environment Security & Secret Management
+
+- **`JWT_SECRET_KEY`**: Minimum 32-character secret key. In production (`APP_ENV=production`), startup validation rejects default or short keys. Generate via: `openssl rand -hex 32`.
+- **`ALLOW_DEV_AUTH_HEADERS`**: Enables `X-User-Role` test headers. **Must be `false` in production** (enforced by startup validator).
+- **`CORS_ORIGINS`**: Explicit allowed origins list (e.g. `http://localhost:3000,http://127.0.0.1:3000`). Wildcard `*` is strictly forbidden in production when credentials are enabled.
+- **`POSTGRES_PASSWORD`**: Production validator blocks default passwords.
 
 For detailed endpoint contracts, RBAC permission matrix, security configuration, and curl examples, see:
 👉 [docs/AUTHENTICATION_AND_RBAC_SPEC.md](docs/AUTHENTICATION_AND_RBAC_SPEC.md)
@@ -565,8 +618,18 @@ For detailed endpoint contracts, RBAC permission matrix, security configuration,
 
 ## 13. Troubleshooting
 
-- **Port Conflict on 55432 or 56379**: Change `POSTGRES_PORT` or `REDIS_PORT` in your `.env` file.
-- **Overpass API Rate Limits**: When importing large study corridors, use `--cache-file path/to/file.graphml` to cache the downloaded graph locally.
+- **Admin Login returns `401 Invalid username/email or password` on a new machine**:
+  The local Docker database has not yet been provisioned with an admin user. Run:
+  ```bash
+  docker compose exec api alembic upgrade head
+  docker compose exec api python -m backend.scripts.bootstrap_admin
+  ```
+- **Driver self-registration works but Admin does not**:
+  This is expected by design. Drivers create their accounts via public self-registration (`/api/v1/auth/register`), while Admin accounts require explicit CLI provisioning as described above.
+- **Port Conflict on 55432 or 56379**:
+  Change `POSTGRES_PORT` or `REDIS_PORT` in your `.env` file.
+- **Overpass API Rate Limits**:
+  When importing large study corridors, use `--cache-file path/to/file.graphml` to cache the downloaded graph locally.
 - **Docker Compose Container Logs**:
   ```bash
   docker compose logs db
