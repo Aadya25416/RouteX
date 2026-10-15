@@ -9,6 +9,17 @@ if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 }
 
+export interface VehicleMarkerData {
+  id: string;
+  lngLat: [number, number];
+  label: string;
+  speedKmh?: number | null;
+  heading?: number | null;
+  isCurrentDriver?: boolean;
+  isStale?: boolean;
+  updatedAt?: string;
+}
+
 export interface RoadMapProps {
   backendInfo?: BackendInfoResponse | null;
   roadsData?: RoadFeatureCollection | null;
@@ -25,6 +36,7 @@ export interface RoadMapProps {
     isDestination?: boolean;
     isNext?: boolean;
   }[];
+  vehicleMarkers?: VehicleMarkerData[];
   customCenter?: [number, number];
   customZoom?: number;
   hideNavControls?: boolean;
@@ -96,6 +108,7 @@ export default function RoadMap({
   routeCoordinates,
   hazardMarker,
   stopMarkers,
+  vehicleMarkers,
   customCenter,
   customZoom,
   hideNavControls,
@@ -106,6 +119,7 @@ export default function RoadMap({
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const activePopupRef = useRef<maplibregl.Popup | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const vehicleMarkersMapRef = useRef<Map<string, { marker: maplibregl.Marker; el: HTMLDivElement }>>(new Map());
   const onSelectRoadRef = useRef(onSelectRoad);
   const onMapClickRef = useRef(onMapClick);
 
@@ -324,6 +338,8 @@ export default function RoadMap({
       }
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
+      vehicleMarkersMapRef.current.forEach(({ marker }) => marker.remove());
+      vehicleMarkersMapRef.current.clear();
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -492,6 +508,102 @@ export default function RoadMap({
       map.once("load", attachMarkers);
     }
   }, [stopMarkers, hazardMarker]);
+
+  // Handle live vehicle markers with efficient position updates
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const updateVehicleMarkers = () => {
+      const currentMap = vehicleMarkersMapRef.current;
+      const nextIds = new Set((vehicleMarkers || []).map((v) => v.id));
+
+      // Remove markers no longer in vehicleMarkers
+      for (const [id, { marker }] of currentMap.entries()) {
+        if (!nextIds.has(id)) {
+          marker.remove();
+          currentMap.delete(id);
+        }
+      }
+
+      if (!vehicleMarkers || vehicleMarkers.length === 0) return;
+
+      for (const v of vehicleMarkers) {
+        const existing = currentMap.get(v.id);
+        if (existing) {
+          // Update position smoothly
+          existing.marker.setLngLat(v.lngLat);
+        } else {
+          // Create marker element
+          const isCurrent = Boolean(v.isCurrentDriver);
+          const isStale = Boolean(v.isStale);
+
+          const el = document.createElement("div");
+          el.className = "rx-map-vehicle-marker";
+          const bg = isCurrent ? "#059669" : isStale ? "#475569" : "#1e293b";
+          const border = isCurrent ? "#34d399" : isStale ? "#94a3b8" : "#3b82f6";
+          el.style.cssText = `display: flex; align-items: center; gap: 5px; background: ${bg}; color: #ffffff; padding: 4px 8px; border-radius: 9999px; border: 1.5px solid ${border}; box-shadow: 0 3px 10px rgba(0,0,0,0.25); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: transform 0.15s ease;`;
+
+          const iconSpan = document.createElement("span");
+          if (isCurrent) {
+            iconSpan.innerHTML = `<span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 2px rgba(52,211,153,0.4);"></span>`;
+          } else if (isStale) {
+            iconSpan.innerText = "⏳";
+            iconSpan.style.fontSize = "10px";
+          } else {
+            iconSpan.innerText = "🚛";
+            iconSpan.style.fontSize = "11px";
+          }
+          el.appendChild(iconSpan);
+
+          const text = document.createElement("span");
+          text.innerText = v.label;
+          el.appendChild(text);
+
+          if (v.speedKmh !== undefined && v.speedKmh !== null && !isStale) {
+            const speedSpan = document.createElement("span");
+            speedSpan.style.cssText = "font-size: 10px; opacity: 0.85; font-weight: 500;";
+            speedSpan.innerText = `· ${Math.round(v.speedKmh)} km/h`;
+            el.appendChild(speedSpan);
+          }
+
+          if (isStale) {
+            const staleSpan = document.createElement("span");
+            staleSpan.style.cssText = "font-size: 9px; opacity: 0.8; font-weight: 600; text-transform: uppercase;";
+            staleSpan.innerText = "· STALE";
+            el.appendChild(staleSpan);
+          }
+
+          // Popup on click
+          const popupHtml = `
+            <div style="font-family: inherit; font-size: 12px; line-height: 1.4; color: #111827; padding: 4px;">
+              <div style="font-weight: 700; font-size: 13px; margin-bottom: 4px; color: ${bg};">
+                ${isCurrent ? "📍 Your Vehicle" : "🚛 Fleet Vehicle"}: ${v.label}
+              </div>
+              <div><strong>Status:</strong> ${isStale ? "<span style='color: #d97706;'>Stale Location</span>" : "<span style='color: #059669;'>Live Tracking Active</span>"}</div>
+              ${v.speedKmh !== undefined && v.speedKmh !== null ? `<div><strong>Speed:</strong> ${Math.round(v.speedKmh)} km/h</div>` : ""}
+              <div><strong>Coordinates:</strong> ${v.lngLat[1].toFixed(5)}, ${v.lngLat[0].toFixed(5)}</div>
+              ${v.updatedAt ? `<div style="font-size: 10px; color: #6b7280; margin-top: 4px;">Updated: ${new Date(v.updatedAt).toLocaleTimeString()}</div>` : ""}
+            </div>
+          `;
+          const popup = new maplibregl.Popup({ offset: 12, maxWidth: "260px" }).setHTML(popupHtml);
+
+          const marker = new maplibregl.Marker({ element: el })
+            .setLngLat(v.lngLat)
+            .setPopup(popup)
+            .addTo(map);
+
+          currentMap.set(v.id, { marker, el });
+        }
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      updateVehicleMarkers();
+    } else {
+      map.once("load", updateVehicleMarkers);
+    }
+  }, [vehicleMarkers]);
 
   return (
     <div className={className || "relative w-full h-full min-h-[500px]"}>

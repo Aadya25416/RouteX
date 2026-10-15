@@ -47,8 +47,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as exc:
             logger.warning(f"Administrator environment bootstrap check skipped: {exc}")
 
+    # Start real-time event broadcaster and Redis Streams consumer
+    from backend.services.sse_broadcaster import get_sse_broadcaster
+    broadcaster = get_sse_broadcaster()
+    await broadcaster.start()
+
     yield
 
+    await broadcaster.stop()
     logger.info(f"Shutting down {settings.APP_NAME}...")
 
 

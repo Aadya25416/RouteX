@@ -37,9 +37,18 @@ class EventPublisher:
         A Redis connection failure or outage logs a warning but never raises or aborts transactions.
         """
         event_id = str(uuid.uuid4())
-        stream = stream_name or (
-            settings.REDIS_STREAM_ROADS if event_type.startswith("road.") else settings.REDIS_STREAM_INCIDENTS
-        )
+        if stream_name:
+            stream = stream_name
+        elif event_type.startswith("road."):
+            stream = settings.REDIS_STREAM_ROADS
+        elif event_type.startswith("vehicle."):
+            stream = settings.REDIS_STREAM_VEHICLES
+        elif event_type.startswith("trip."):
+            stream = settings.REDIS_STREAM_TRIPS
+        elif event_type.startswith("evidence."):
+            stream = settings.REDIS_STREAM_EVIDENCE
+        else:
+            stream = settings.REDIS_STREAM_INCIDENTS
 
         event_data = {
             "event_id": event_id,
@@ -50,6 +59,13 @@ class EventPublisher:
             "source": "nerlink.backend",
             "payload": payload,
         }
+
+        # Deliver immediately to in-memory SSE subscribers
+        try:
+            from backend.services.sse_broadcaster import get_sse_broadcaster
+            get_sse_broadcaster().broadcast_event(event_data)
+        except Exception as b_exc:
+            logger.debug(f"In-memory broadcast dispatch notice: {b_exc}")
 
         try:
             client = aioredis.from_url(

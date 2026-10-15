@@ -8,6 +8,20 @@ import { GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
 import { getStatusColor } from "@/components/RoadMap";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
 import { api } from "@/lib/api";
+import { connectEventStream } from "@/lib/events";
+import type { VehicleMarkerData } from "@/components/RoadMap";
+
+interface VehicleItem {
+  id: string;
+  registration_number: string;
+  vehicle_code?: string;
+  status: string;
+}
+
+interface VehicleListRes {
+  total: number;
+  items: VehicleItem[];
+}
 
 // Dynamically import RoadMap
 const RoadMap = dynamic(() => import("@/components/RoadMap"), {
@@ -26,15 +40,108 @@ export default function AdminLiveMapPage() {
   const [selectedRoad, setSelectedRoad] = useState<RoadFeatureProperties | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [vehicleMarkers, setVehicleMarkers] = useState<Map<string, VehicleMarkerData>>(new Map());
+  const [liveUpdateNotice, setLiveUpdateNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     api.get<BackendInfoResponse>("/backend-api/info")
-      .then((data) => setBackendInfo(data))
+      .then((data) => {
+        if (isMounted) setBackendInfo(data);
+      })
       .catch(() => {});
 
     api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
-      .then((data) => setRoadsData(data))
+      .then((data) => {
+        if (isMounted) setRoadsData(data);
+      })
       .catch(() => {});
+
+    // Fetch initial fleet vehicles and their latest GPS locations
+    api.get<VehicleListRes>("/api/v1/vehicles?limit=50")
+      .then(async (res) => {
+        if (!isMounted || !res?.items) return;
+        const initialMap = new Map<string, VehicleMarkerData>();
+
+        for (const veh of res.items) {
+          try {
+            const loc = await api.get<{
+              latitude: number;
+              longitude: number;
+              speed_kmh?: number;
+              heading_deg?: number;
+              recorded_at: string;
+            }>(`/api/v1/vehicles/${veh.id}/location`);
+
+            if (loc && isMounted) {
+              const recordedAt = new Date(loc.recorded_at).getTime();
+              const isStale = (Date.now() - recordedAt) > 5 * 60 * 1000;
+              initialMap.set(veh.id, {
+                id: veh.id,
+                lngLat: [loc.longitude, loc.latitude],
+                label: veh.vehicle_code || veh.registration_number,
+                speedKmh: loc.speed_kmh,
+                heading: loc.heading_deg,
+                isStale,
+                updatedAt: loc.recorded_at,
+              });
+            }
+          } catch {
+            // Vehicle may not have telemetry yet
+          }
+        }
+
+        if (isMounted) {
+          setVehicleMarkers(new Map(initialMap));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Connect to SSE stream for real-time corridor updates
+  useEffect(() => {
+    const unsubscribe = connectEventStream({
+      onEvent: (event) => {
+        if (event.event_type === "vehicle.location_updated") {
+          const payload = event.payload;
+          setVehicleMarkers((prev) => {
+            const next = new Map(prev);
+            const recordedAt = new Date(payload.recorded_at).getTime();
+            const isStale = (Date.now() - recordedAt) > 5 * 60 * 1000;
+            const label = payload.registration_number || payload.vehicle_code || prev.get(payload.vehicle_id)?.label || `Vehicle ${payload.vehicle_id.slice(0, 6)}`;
+
+            next.set(payload.vehicle_id, {
+              id: payload.vehicle_id,
+              lngLat: [payload.longitude, payload.latitude],
+              label,
+              speedKmh: payload.speed_kmh,
+              heading: payload.heading_deg,
+              isStale,
+              updatedAt: payload.recorded_at,
+            });
+            return next;
+          });
+        } else if (event.event_type === "road.status_changed") {
+          api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+            .then(setRoadsData)
+            .catch(() => {});
+          setLiveUpdateNotice(`Road segment ${event.payload?.segment_id || ""} updated to ${event.payload?.status || ""}`);
+          setTimeout(() => setLiveUpdateNotice(null), 5000);
+        } else if (event.event_type === "trip.rerouted") {
+          setLiveUpdateNotice(`Trip ${event.payload?.trip_id?.slice(0, 8)} rerouted (${event.payload?.reason || "hazard bypass"})`);
+          setTimeout(() => setLiveUpdateNotice(null), 6000);
+        }
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Filtered roads collection if filter is active
@@ -84,7 +191,12 @@ export default function AdminLiveMapPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#71877D]">Filter by Status:</span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{vehicleMarkers.size} Fleet Vehicles ({Array.from(vehicleMarkers.values()).filter((v) => !v.isStale).length} Live)</span>
+            </span>
+
+            <span className="text-xs font-semibold text-[#71877D] ml-2">Filter by Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -101,6 +213,23 @@ export default function AdminLiveMapPage() {
           </div>
         </div>
 
+        {/* Real-time Event Notification Banner */}
+        {liveUpdateNotice && (
+          <div className="bg-[#EAF2E7] border border-[#16A779] text-[#12432A] px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#16A779] animate-ping" />
+              <span>{liveUpdateNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLiveUpdateNotice(null)}
+              className="text-[#71877D] hover:text-[#193B32] font-bold text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Main Grid: Map Area + Segment Details Side Panel */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0 overflow-hidden">
           {/* Map Column (8 or 9 cols) */}
@@ -111,6 +240,7 @@ export default function AdminLiveMapPage() {
               routeCoordinates={GUWAHATI_TAWANG_CORRIDOR_COORDS}
               stopMarkers={stopMarkers}
               hazardMarker={hazardMarker}
+              vehicleMarkers={Array.from(vehicleMarkers.values())}
               onSelectRoad={setSelectedRoad}
               customCenter={[92.2, 26.9]}
               customZoom={8.0}
