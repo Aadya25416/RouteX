@@ -53,6 +53,7 @@ coverage.xml
 
 # Data & caches
 cache/
+data
 data/cache/
 data/osm/
 data/evidence/
