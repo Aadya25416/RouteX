@@ -863,3 +863,209 @@ async def test_auth_endpoints_connectivity(
     assert logout_res.json()["status"] == "ok"
 
 
+# ============================================================================
+# 11. Admin Provisioning & Teammate Setup Reliability Tests
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_admin_bootstrap_creation_and_idempotency(db_session: AsyncSession):
+    from backend.scripts.bootstrap_admin import bootstrap_admin
+    email = f"provision_admin_{uuid.uuid4().hex[:8]}@routex.ai"
+    initial_pw = "Initial_Admin_Password_2026!"
+
+    # 1. First run: provisions new admin
+    res1 = await bootstrap_admin(
+        email=email,
+        full_name="Provisioned Admin",
+        password=initial_pw,
+        reset_password=False,
+    )
+    assert res1["action"] == "created"
+    assert res1["role"] == "admin"
+    assert res1["password_changed"] is True
+
+    # Verify user exists in database
+    user_query = await db_session.execute(select(User).where(User.email == email))
+    user1 = user_query.scalar_one_or_none()
+    assert user1 is not None
+    assert user1.role == "admin"
+    assert verify_password(initial_pw, user1.hashed_password) is True
+
+    original_hash = user1.hashed_password
+
+    # 2. Second run: Idempotent no-op (no password reset)
+    res2 = await bootstrap_admin(
+        email=email,
+        full_name="Provisioned Admin",
+        password="Different_Password_Should_Be_Ignored!",
+        reset_password=False,
+    )
+    assert res2["action"] == "verified_existing"
+    assert res2["password_changed"] is False
+
+    # Password hash must remain UNTOUCHED
+    await db_session.refresh(user1)
+    assert user1.hashed_password == original_hash
+    assert verify_password(initial_pw, user1.hashed_password) is True
+
+
+@pytest.mark.asyncio
+async def test_admin_bootstrap_conflict_rejection(db_session: AsyncSession):
+    from backend.scripts.bootstrap_admin import bootstrap_admin
+    driver_email = f"driver_{uuid.uuid4().hex[:8]}@routex.ai"
+
+    # Create driver account
+    driver = User(
+        id=uuid.uuid4(),
+        email=driver_email,
+        full_name="Assam Cargo Driver",
+        role="driver",
+        hashed_password=hash_password("DriverPass123!"),
+        is_active=True,
+    )
+    db_session.add(driver)
+    await db_session.commit()
+
+    # Attempting to bootstrap this email must be REJECTED to prevent accidental privilege escalation
+    with pytest.raises(ValueError, match="Cannot convert non-admin user to admin"):
+        await bootstrap_admin(
+            email=driver_email,
+            password="HackedAdminPass123!",
+            reset_password=False,
+        )
+
+    # Verify role remains driver
+    await db_session.refresh(driver)
+    assert driver.role == "driver"
+
+
+@pytest.mark.asyncio
+async def test_admin_bootstrap_explicit_reset_and_session_revocation(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    from backend.scripts.bootstrap_admin import bootstrap_admin
+    admin_email = f"reset_admin_{uuid.uuid4().hex[:8]}@routex.ai"
+    old_pw = "Old_Admin_Password_2026!"
+    new_pw = "New_Admin_Password_2026!"
+
+    # 1. Create admin
+    await bootstrap_admin(
+        email=admin_email,
+        full_name="Reset Admin Test",
+        password=old_pw,
+        reset_password=False,
+    )
+
+    # 2. Login with old password
+    login1 = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": admin_email, "password": old_pw},
+    )
+    assert login1.status_code == 200
+    old_refresh_token = login1.json()["refresh_token"]
+
+    # 3. Explicitly reset password
+    reset_res = await bootstrap_admin(
+        email=admin_email,
+        password=new_pw,
+        reset_password=True,
+    )
+    assert reset_res["action"] == "reset"
+    assert reset_res["password_changed"] is True
+
+    # 4. Old refresh token must now be revoked
+    refresh_fail = await async_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": old_refresh_token},
+    )
+    assert refresh_fail.status_code == 401
+
+    # 5. Old password login must fail
+    login_fail = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": admin_email, "password": old_pw},
+    )
+    assert login_fail.status_code == 401
+
+    # 6. New password login must succeed
+    login_ok = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": admin_email, "password": new_pw},
+    )
+    assert login_ok.status_code == 200
+    assert login_ok.json()["user"]["role"] == "admin"
+
+
+@pytest.mark.asyncio
+async def test_admin_login_fresh_database_returns_generic_401(async_client: AsyncClient):
+    """Verifies that non-existent admin login returns generic 401 (preventing user enumeration)."""
+    random_email = f"nonexistent_{uuid.uuid4().hex[:8]}@routex.ai"
+    res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": random_email, "password": "AnyPassword123!"},
+    )
+    assert res.status_code == 401
+    assert "Invalid username/email or password" in res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_inactive_admin_login_rejected(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    email = f"inactive_admin_{uuid.uuid4().hex[:8]}@routex.ai"
+    pw = "InactiveAdmin123!"
+    user = User(
+        id=uuid.uuid4(),
+        email=email,
+        full_name="Inactive Admin",
+        role="admin",
+        hashed_password=hash_password(pw),
+        is_active=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": email, "password": pw},
+    )
+    assert res.status_code == 401
+    assert "Account is inactive or suspended" in res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_admin_bootstrap_reads_env_vars(
+    monkeypatch: pytest.MonkeyPatch, async_client: AsyncClient, db_session: AsyncSession
+):
+    """Verifies that bootstrap_admin reads ADMIN_PASSWORD from environment when omitted."""
+    from backend.scripts.bootstrap_admin import bootstrap_admin
+
+    env_email = f"env_admin_{uuid.uuid4().hex[:8]}@routex.ai"
+    env_pw = "EnvAdminPassword_2026!"
+
+    monkeypatch.setenv("ADMIN_EMAIL", env_email)
+    monkeypatch.setenv("ADMIN_PASSWORD", env_pw)
+
+    # Call bootstrap_admin without password argument
+    res = await bootstrap_admin(email=env_email, password=None, reset_password=False)
+    assert res["action"] == "created"
+    assert res["role"] == "admin"
+
+    # Verify user can log in with password from env
+    login_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": env_email, "password": env_pw},
+    )
+    assert login_res.status_code == 200
+    assert login_res.json()["user"]["role"] == "admin"
+
+    # Verify invalid password fails
+    fail_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": env_email, "password": "WrongPassword123!"},
+    )
+    assert fail_res.status_code == 401
+
+
+
+

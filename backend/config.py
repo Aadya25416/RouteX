@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 from typing import Annotated
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -103,6 +103,79 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = 5
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 300
 
+    # CORS Origins
+    CORS_ORIGINS: list[str] | str = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+    # Admin Provisioning Configuration (supports ADMIN_EMAIL / ADMIN_PASSWORD or ADMIN_BOOTSTRAP_*)
+    ADMIN_BOOTSTRAP_EMAIL: str = Field(
+        default="admin@routex.ai",
+        validation_alias=AliasChoices("ADMIN_BOOTSTRAP_EMAIL", "ADMIN_EMAIL"),
+    )
+    ADMIN_BOOTSTRAP_NAME: str = Field(
+        default="RouteX Administrator",
+        validation_alias=AliasChoices("ADMIN_BOOTSTRAP_NAME", "ADMIN_NAME"),
+    )
+    ADMIN_BOOTSTRAP_PASSWORD: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ADMIN_BOOTSTRAP_PASSWORD", "ADMIN_PASSWORD"),
+    )
+
+    @property
+    def ADMIN_EMAIL(self) -> str:
+        return self.ADMIN_BOOTSTRAP_EMAIL
+
+    @property
+    def ADMIN_PASSWORD(self) -> str | None:
+        return self.ADMIN_BOOTSTRAP_PASSWORD
+
+    @property
+    def ADMIN_NAME(self) -> str:
+        return self.ADMIN_BOOTSTRAP_NAME
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
+                import json
+                try:
+                    return json.loads(v_str)
+                except Exception:
+                    pass
+            return [i.strip() for i in v_str.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
+        return []
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v: list[str], info) -> list[str]:
+        app_env = info.data.get("APP_ENV", "development") if info.data else "development"
+        if app_env == "production":
+            if not v:
+                raise ValueError("Production environment requires explicit CORS_ORIGINS.")
+            if "*" in v:
+                raise ValueError(
+                    "Wildcard '*' CORS_ORIGINS is prohibited in production when credentials are enabled."
+                )
+        return v
+
+    @field_validator("POSTGRES_PASSWORD")
+    @classmethod
+    def validate_postgres_password(cls, v: str, info) -> str:
+        app_env = info.data.get("APP_ENV", "development") if info.data else "development"
+        if app_env == "production" and (
+            not v or "nerlink_secure_password" in v or len(v) < 8
+        ):
+            raise ValueError(
+                "Production environment requires a strong, explicit POSTGRES_PASSWORD."
+            )
+        return v
+
     @field_validator("ALLOW_DEV_AUTH_HEADERS")
     @classmethod
     def validate_dev_auth_headers(cls, v: bool, info) -> bool:
@@ -178,3 +251,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+settings = get_settings()
