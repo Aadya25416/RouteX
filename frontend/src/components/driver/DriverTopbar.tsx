@@ -1,40 +1,20 @@
 "use client";
 
-import React, { useState, useSyncExternalStore } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface DriverTopbarProps {
   onSearch?: (query: string) => void;
 }
 
-function subscribeToStorage(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
-
 export default function DriverTopbar({ onSearch }: DriverTopbarProps) {
+  const { user, logout } = useAuth();
   const [searchValue, setSearchValue] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
 
-  const driverLabel = useSyncExternalStore(
-    subscribeToStorage,
-    () => {
-      const name = localStorage.getItem("rx_driver_name");
-      if (name) return name;
-      const email = localStorage.getItem("rx_driver_email");
-      if (email) return email.split("@")[0];
-      return "Driver";
-    },
-    () => "Driver"
-  );
-
-  const driverEmail = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("rx_driver_email") || "corridor-driver-01",
-    () => "corridor-driver-01"
-  );
+  const driverLabel = user?.full_name || "Driver";
+  const driverEmail = user?.email || "driver@routex.ai";
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
@@ -159,20 +139,16 @@ export default function DriverTopbar({ onSearch }: DriverTopbarProps) {
                 <p className="font-semibold text-[#193B32]">{driverLabel}</p>
                 <p className="text-[11px] text-[#71877D] truncate">{driverEmail}</p>
               </div>
-              <Link
-                href="/login"
-                className="block px-3 py-2 text-[#DC4848] hover:bg-[#FEEEEE] transition-colors"
-                onClick={() => {
+              <button
+                type="button"
+                className="w-full text-left block px-3 py-2 text-[#DC4848] hover:bg-[#FEEEEE] transition-colors cursor-pointer"
+                onClick={async () => {
                   setShowProfileMenu(false);
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("rx_auth_role");
-                    localStorage.removeItem("rx_driver_name");
-                    localStorage.removeItem("rx_driver_email");
-                  }
+                  await logout();
                 }}
               >
-                Switch Role / Logout
-              </Link>
+                Logout
+              </button>
             </div>
           )}
         </div>

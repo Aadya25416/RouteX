@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useId } from "react";
 import dynamic from "next/dynamic";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { api, ApiError } from "@/lib/api";
 import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
 import type {
   RouteMode,
@@ -100,13 +101,11 @@ export default function RoutePlanningPage() {
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
 
   useEffect(() => {
-    fetch("/backend-api/info", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<BackendInfoResponse>("/backend-api/info")
       .then((data) => setBackendInfo(data))
       .catch(() => {});
 
-    fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
       .then((data) => setRoadsData(data))
       .catch(() => {});
   }, []);
@@ -288,43 +287,20 @@ export default function RoutePlanningPage() {
     setRouteResult(null);
 
     try {
-      const response = await fetch("/api/v1/routes/plan", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Role": "dispatcher",
-          "X-User-Email": "dispatcher@nerlink.org",
-        },
-        body: JSON.stringify({
-          origin_lat: resolvedFrom.lat,
-          origin_lon: resolvedFrom.lng,
-          destination_lat: resolvedTo.lat,
-          destination_lon: resolvedTo.lng,
-          mode: travelMode,
-          require_verified_safe: requireVerifiedSafe,
-          max_snapping_distance_m: 10000.0,
-        }),
+      const data = await api.post<RouteRecommendationResponse>("/api/v1/routes/plan", {
+        origin_lat: resolvedFrom.lat,
+        origin_lon: resolvedFrom.lng,
+        destination_lat: resolvedTo.lat,
+        destination_lon: resolvedTo.lng,
+        mode: travelMode,
+        require_verified_safe: requireVerifiedSafe,
+        max_snapping_distance_m: 10000.0,
       });
 
-      if (!response.ok) {
-        let errorDetail = `Backend returned HTTP ${response.status} (${response.statusText})`;
-        try {
-          const errJson = await response.json();
-          if (errJson.detail) {
-            errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
-          }
-        } catch {
-          // Keep default message
-        }
-        setRouteError(errorDetail);
-        return;
-      }
-
-      const data: RouteRecommendationResponse = await response.json();
       setRouteResult(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Network error communicating with RouteX routing service.";
-      setRouteError(`Failed to connect to backend: ${msg}`);
+      const msg = err instanceof ApiError ? err.message : (err instanceof Error ? err.message : "Routing calculation failed.");
+      setRouteError(msg);
     } finally {
       setIsCalculating(false);
     }

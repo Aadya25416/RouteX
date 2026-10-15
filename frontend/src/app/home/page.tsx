@@ -11,7 +11,7 @@ import HomeFooter from "@/components/home/HomeFooter";
 export const metadata: Metadata = {
   title: "RouteX — Stronger Connections | AI Route Intelligence",
   description:
-    "RouteX / NER-LINK homepage: Safer routes and stronger connections for the Guwahati-Tawang corridor and Northeast India. AI-powered route intelligence for logistics.",
+    "RouteX homepage: Safer routes and stronger connections for high-altitude logistics corridors and Northeast India. AI-powered route intelligence for logistics.",
 };
 
 export default function HomePage() {

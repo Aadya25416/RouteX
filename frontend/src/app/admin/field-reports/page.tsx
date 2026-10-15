@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { api } from "@/lib/api";
 import { INITIAL_ADMIN_INCIDENTS } from "@/data/adminData";
 import { AdminIncidentItem } from "@/types/admin";
 
@@ -20,15 +21,21 @@ interface BackendIncidentItem {
   description?: string;
 }
 
+interface IncidentListResponse {
+  total: number;
+  items: BackendIncidentItem[];
+}
+
 export default function FieldReportsPage() {
   const [reports, setReports] = useState<AdminIncidentItem[]>(INITIAL_ADMIN_INCIDENTS);
   const [sourceFilter, setSourceFilter] = useState<string>("ALL");
 
   useEffect(() => {
-    fetch("/api/v1/incidents?limit=50", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    let isMounted = true;
+    api
+      .get<IncidentListResponse>("/api/v1/incidents?limit=50")
       .then((data) => {
-        if (data && data.items && data.items.length > 0) {
+        if (isMounted && data && data.items && data.items.length > 0) {
           const mapped: AdminIncidentItem[] = data.items.map((item: BackendIncidentItem) => ({
             id: item.id,
             type: item.incident_type || "LANDSLIDE",
@@ -37,7 +44,7 @@ export default function FieldReportsPage() {
             reportedBy: item.source === "FIELD_REPORT" ? "Field Officer" : "Driver Report",
             reporterRole: item.source === "FIELD_REPORT" ? "Field Officer" : "Driver",
             timeAgo: "Recently",
-            timestamp: item.observed_at || item.created_at,
+            timestamp: item.observed_at || item.created_at || new Date().toISOString(),
             status: item.status || "SUBMITTED",
             severity: item.severity || "HIGH",
             description: item.description || "Reported corridor condition",
@@ -47,6 +54,10 @@ export default function FieldReportsPage() {
         }
       })
       .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filtered = reports.filter((r) => {

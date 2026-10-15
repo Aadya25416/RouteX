@@ -33,7 +33,7 @@ export default function DriverFooter() {
 
           <div className="flex items-center gap-2 text-[11px] text-[#193B32] font-semibold bg-[#F1F4E8] px-2.5 py-1 rounded-full border border-[#DCE5D8]">
             <span className="w-2 h-2 rounded-full bg-[#16A779] animate-pulse" aria-hidden="true" />
-            <span>NER-LINK Dispatch Active (IST UTC +5:30)</span>
+            <span>RouteX Dispatch Active (IST UTC +5:30)</span>
           </div>
         </div>
 
@@ -80,7 +80,7 @@ export default function DriverFooter() {
           </nav>
 
           <div className="text-[11px] text-[#8F9E97] whitespace-nowrap self-start lg:self-auto">
-            © {CURRENT_YEAR} RouteX / NER-LINK · Road network data © OpenStreetMap
+            © {CURRENT_YEAR} RouteX · Road network data © OpenStreetMap contributors
           </div>
         </div>
       </div>

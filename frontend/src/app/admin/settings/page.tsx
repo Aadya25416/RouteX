@@ -91,8 +91,8 @@ export default function AdminSettingsPage() {
           <div className="rx-admin-card p-5 space-y-2 text-xs">
             <h2 className="text-sm font-bold text-[#193B32]">System Environment &amp; Version</h2>
             <div className="grid grid-cols-2 gap-3 pt-1 text-[#71877D]">
-              <div>Environment: <strong className="text-[#193B32]">Phase 1 Prototype</strong></div>
-              <div>Platform: <strong className="text-[#193B32]">RouteX / NER-LINK</strong></div>
+              <div>Environment: <strong className="text-[#193B32]">Development (Active)</strong></div>
+              <div>Platform: <strong className="text-[#193B32]">RouteX Platform</strong></div>
               <div>Mapping Engine: <strong className="text-[#193B32]">MapLibre GL JS v6.14</strong></div>
               <div>Coordinate Reference: <strong className="text-[#193B32]">WGS84 (EPSG:4326)</strong></div>
             </div>

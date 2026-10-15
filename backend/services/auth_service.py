@@ -19,6 +19,7 @@ from backend.auth.crypto import (
 from backend.config import get_settings
 from backend.models.users import User, UserSession
 from backend.schemas.auth import (
+    DriverRegisterRequest,
     LoginRequest,
     PasswordResetRequest,
     TokenResponse,
@@ -356,6 +357,62 @@ class AuthService:
     # -------------------------------------------------------------
     # User Account Management
     # -------------------------------------------------------------
+
+    async def register_driver(
+        self,
+        payload: DriverRegisterRequest,
+    ) -> User:
+        """
+        Public self-registration for driver accounts.
+        Enforces unique email, Argon2id password hashing, and active account state.
+        The backend unconditionally assigns the 'driver' role and ignores or overrides
+        any client-supplied role parameter.
+        """
+        normalized_email = payload.email.strip().lower()
+
+        # Check existing account
+        existing = await self.session.execute(
+            select(User).where(func.lower(User.email) == normalized_email)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An account with email '{normalized_email}' already exists.",
+            )
+
+        if payload.role and payload.role != "driver":
+            logger.warning(
+                f"Client attempted to supply privileged role '{payload.role}' during self-registration "
+                f"for '{normalized_email}'. Role strictly forced to 'driver'."
+            )
+
+        hashed_pw = hash_password(payload.password)
+
+        new_user = User(
+            id=uuid.uuid4(),
+            email=normalized_email,
+            full_name=payload.full_name.strip(),
+            hashed_password=hashed_pw,
+            role="driver",  # Never trust client-supplied role; strictly forced to driver
+            preferred_language=payload.preferred_language,
+            is_active=True,
+        )
+        self.session.add(new_user)
+        await self.session.flush()
+
+        record_audit_log(
+            session=self.session,
+            action="driver_self_registered",
+            entity_type="user",
+            entity_id=str(new_user.id),
+            actor_id=new_user.id,
+            details={"email": normalized_email, "role": "driver"},
+        )
+
+        await self.session.commit()
+        await self.session.refresh(new_user)
+        logger.info(f"Driver self-registered successfully: '{new_user.email}' (ID: {new_user.id}).")
+        return new_user
 
     async def create_user(
         self,

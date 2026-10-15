@@ -419,21 +419,34 @@ curl -X POST http://localhost:8000/api/v1/satellite/ingest \
   -F 'footprint_geojson={"type":"Polygon","coordinates":[[[91.5,26.1],[92.8,26.1],[92.8,27.7],[91.5,27.7],[91.5,26.1]]]}'
 ```
 
-### 10.3 Weather Ingestion (Deliverable C)
+### 10.3 Weather Ingestion & Forecast Pipeline (Deliverable C)
 - **Provider:** Genuine Open-Meteo external weather API (`https://api.open-meteo.com/v1/forecast`).
-- **Corridor Sampling:** Samples representative corridor waypoints (Guwahati, Rangia, Tezpur, Balipara, Bhalukpong, Bomdila, Dirang, Sela Pass, Tawang) within configured bounds rather than hammering individual road segments.
-- **Data Integrity:** Only persists fields returned by the provider (`temperature_c`, `rainfall_mm`, `wind_speed_kmh`, `wind_gusts_kmh`, `snowfall_cm`, `weather_code`, `visibility_m`). Never converts missing measurements into `0.0`.
-- **Outage Resilience:** Upstream timeouts or 5xx outages are safely logged and leave existing historical observations intact.
-- **CLI & Background Sync:** Includes dedicated operational script `python -m backend.scripts.ingest_weather`.
+- **Corridor Sampling:** Samples representative corridor waypoints (Guwahati, Rangia, Tezpur, Balipara, Bhalukpong, Bomdila, Dirang, Sela Pass, Tawang) reflecting elevation changes (55m to 4,200m) and micro-climates without hammering individual road segments.
+- **Data Integrity & Schema:** Captures 20+ meteorological variables across precipitation (`rain_mm`, `showers_mm`, `snowfall_cm`, `precipitation_probability_pct`), atmospheric (`temperature_c`, `relative_humidity_pct`, `dew_point_c`, `apparent_temperature_c`, `pressure_msl_hpa`, `surface_pressure_hpa`), wind (`wind_speed_kmh`, `wind_direction_deg`, `wind_gusts_kmh`), visibility (`visibility_m`, `weather_code`, `cloud_cover_pct`), and hydrology (`et0_evapotranspiration_mm`, `soil_moisture_m3m3`). Never converts missing measurements into `0.0`.
+- **Forecast Horizons & Temporal Semantics:** Distinguishes `CURRENT`, `OBSERVATION`, `FORECAST`, and `DAILY_SUMMARY` data types with separate `observed_at`, `issue_time`, and `forecast_valid_at` timestamps. Hourly forecasts supported up to 7 days (default 3 days).
+- **Meteorological Interval Semantics:** Hourly rainfall represents interval accumulation over the preceding 60 minutes. Rolling accumulation windows (1h, 3h, 6h, 24h past and future) enforce unique interval aggregation without double-counting retries.
+- **Outage Resilience:** Bounded exponential backoff retries for 429/5xx upstream errors; waypoint isolation ensures partial upstream failures do not discard successful waypoint data.
+- **CLI & Background Sync:** Dedicated operational script `python -m backend.scripts.ingest_weather --forecast-days 3`.
+- **Full Specification:** See [docs/WEATHER_DATA_PIPELINE_SPEC.md](file:///home/vaish007/coding/projects/RouteX/docs/WEATHER_DATA_PIPELINE_SPEC.md).
 
 ```bash
-# Trigger weather refresh across corridor sample points
-curl -X POST http://localhost:8000/api/v1/weather/refresh \
+# Trigger weather refresh across corridor sample points (with 3-day forecast)
+curl -X POST "http://localhost:8000/api/v1/weather/refresh?forecast_days=3" \
   -H "X-User-Role: dispatcher" \
   -H "X-User-Email: dispatcher@nerlink.org"
 
-# Inspect latest observations
-curl -s http://localhost:8000/api/v1/weather/latest?limit=5 \
+# Inspect latest observations (optionally filtered by data_type or bounding box)
+curl -s "http://localhost:8000/api/v1/weather/latest?limit=5&data_type=CURRENT" \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" | jq .
+
+# Inspect 24-hour hourly forecast for a corridor location
+curl -s "http://localhost:8000/api/v1/weather/forecast?latitude=26.1445&longitude=91.7362&hours=24" \
+  -H "X-User-Role: field_officer" \
+  -H "X-User-Email: officer@nerlink.org" | jq .
+
+# Query downstream ML feature vector with rolling rainfall accumulation windows
+curl -s "http://localhost:8000/api/v1/weather/features?latitude=26.1445&longitude=91.7362" \
   -H "X-User-Role: field_officer" \
   -H "X-User-Email: officer@nerlink.org" | jq .
 

@@ -64,9 +64,10 @@ async def build_incident_detail_response(incident: Incident, session: AsyncSessi
     """Helper formatting an Incident instance into IncidentDetailResponse with coordinates."""
     lon, lat = extract_coordinates(incident.geom)
 
-    # Format road associations
+    # Format road associations (sorted ascending by distance_m)
     assocs = []
-    for a in incident.road_associations:
+    sorted_assocs = sorted(incident.road_associations, key=lambda x: (x.distance_m is None, x.distance_m or 0.0))
+    for a in sorted_assocs:
         road_name = a.road_segment.name if a.road_segment else None
         road_class = a.road_segment.road_class if a.road_segment else None
         assocs.append(

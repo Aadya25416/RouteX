@@ -21,3 +21,22 @@ class WeatherProvider(abc.ABC):
         Returns normalized dictionary with non-null values for only fields provided upstream.
         """
         pass
+
+    @abc.abstractmethod
+    async def fetch_weather(
+        self,
+        lat: float,
+        lon: float,
+        forecast_days: int = 2,
+    ) -> dict[str, Any]:
+        """
+        Retrieves current, hourly forecast, and daily summary data for latitude and longitude.
+        Returns:
+            {
+                "current": dict[str, Any],
+                "hourly": list[dict[str, Any]],
+                "daily": list[dict[str, Any]],
+                "metadata": dict[str, Any],
+            }
+        """
+        pass

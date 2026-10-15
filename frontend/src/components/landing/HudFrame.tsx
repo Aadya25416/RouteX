@@ -54,7 +54,7 @@ export default function HudFrame({
       {/* ─── Top Left: Metadata & Status Log ───────────────────── */}
       <header className="hud-section hud-top-left">
         <div className="hud-meta-block">
-          <div className="hud-brand-title">NER-LINK / ROAD-ACCESS</div>
+          <div className="hud-brand-title">ROUTEX / ROAD-ACCESS</div>
           <div className="hud-meta-line">
             <span className="hud-meta-key">CORRIDOR</span>
             <span className="hud-meta-val">Guwahati - Tawang</span>

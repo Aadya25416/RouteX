@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 interface FormState {
   email: string;
@@ -42,6 +44,9 @@ export default function LoginForm() {
     return Object.keys(errs).length === 0;
   };
 
+  const router = useRouter();
+  const { login } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -49,27 +54,12 @@ export default function LoginForm() {
     setForm((f) => ({ ...f, isLoading: true, error: null }));
 
     try {
-      // NOTE: The RouteX backend does not currently expose an authentication
-      // endpoint (/api/v1/auth/login or similar). The UI is fully built and
-      // integration-ready. Once the backend exposes an auth contract, replace
-      // this block with a real fetch call using the documented payload schema.
-      //
-      // Example integration point:
-      //   const res = await fetch("/api/v1/auth/login", {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify({ email: form.email, password: form.password }),
-      //   });
-      //   if (!res.ok) throw new Error((await res.json()).detail || "Login failed");
-      //   const { access_token } = await res.json();
-      //   // store token and redirect
-      //   router.push("/map");
-
-      // For now: simulate latency and surface honest status
-      await new Promise((r) => setTimeout(r, 800));
-      throw new Error(
-        "Authentication endpoint not yet available. The RouteX backend does not expose a /api/v1/auth/login route in its current Phase 1 implementation. Please start the backend and check /docs for available endpoints."
-      );
+      const user = await login(form.email, form.password);
+      if (user.role === "driver") {
+        router.push("/driver");
+      } else {
+        router.push("/admin");
+      }
     } catch (err: unknown) {
       setForm((f) => ({
         ...f,
@@ -175,14 +165,6 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* Auth unavailability notice */}
-      <div className="login-auth-notice" role="note">
-        <span className="login-auth-notice-icon" aria-hidden="true">ℹ️</span>
-        <span>
-          Authentication is <strong>UI-ready</strong>. Backend auth endpoint
-          integration pending Phase 2 backend implementation.
-        </span>
-      </div>
 
       {/* Error state */}
       {form.error && (

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
 import { getStatusColor } from "@/components/RoadMap";
+import { api } from "@/lib/api";
 
 // Dynamically import MapLibre component with SSR disabled
 const RoadMap = dynamic(() => import("@/components/RoadMap"), {
@@ -24,26 +25,14 @@ interface FetchedNetworkData {
 async function fetchNetworkData(
   onStep?: (step: string) => void
 ): Promise<FetchedNetworkData> {
-  // 1. Fetch backend info (corridor bounds & attribution) via Next.js proxy
-  const infoRes = await fetch("/backend-api/info", { cache: "no-store" });
-  if (!infoRes.ok) {
-    throw new Error(
-      `Backend returned HTTP ${infoRes.status} (${infoRes.statusText}) when querying root endpoint.`
-    );
-  }
-  const infoData: BackendInfoResponse = await infoRes.json();
+  // 1. Fetch backend info (corridor bounds & attribution)
+  const infoData = await api.get<BackendInfoResponse>("/backend-api/info");
 
   // 2. Fetch real road geometry GeoJSON
   if (onStep) {
     onStep("Fetching canonical road geometry from GET /api/v1/roads/geojson ...");
   }
-  const roadsRes = await fetch("/api/v1/roads/geojson?limit=500", { cache: "no-store" });
-  if (!roadsRes.ok) {
-    throw new Error(
-      `Backend returned HTTP ${roadsRes.status} (${roadsRes.statusText}) when querying road GeoJSON.`
-    );
-  }
-  const roadsGeoJson: RoadFeatureCollection = await roadsRes.json();
+  const roadsGeoJson = await api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500");
 
   return { backendInfo: infoData, roadsData: roadsGeoJson };
 }
@@ -123,7 +112,7 @@ export default function RoadNetworkPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-base font-bold tracking-tight text-white">RouteX / NER-LINK</h1>
+            <h1 className="text-base font-bold tracking-tight text-white">RouteX</h1>
           </div>
           <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
             Phase 1: Read-Only Road Map
