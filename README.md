@@ -1,10 +1,5 @@
-# NER-LINK — Logistics Accessibility Intelligence Platform
-
-**Problem Statement:** SIH26002  
-**Corridor (Provisional):** Guwahati–Tawang (Configurable Study Area)  
-**Architecture:** Python + FastAPI, PostgreSQL 16 + PostGIS 3.4, Redis 7, SQLAlchemy 2.0, Alembic, OSMnx/NetworkX
-
-NER-LINK provides road accessibility intelligence, disruption management, essential logistics consignment tracking, and routable road graph navigation for the North Eastern Region.
+# RouteX — Logistics Accessibility Intelligence Platform
+RouteX provides road accessibility intelligence, disruption management, essential logistics consignment tracking, and routable road graph navigation for difficult terrain and disaster prone areas.
 
 ---
 
