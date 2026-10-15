@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import DriverLayout from "@/components/driver/DriverLayout";
@@ -58,6 +58,22 @@ export default function DriverDashboardPage() {
 
   // Hook into browser geolocation tracking with 5s cadence
   const vehicleId = activeBackendTrip?.vehicle?.id || activeBackendTrip?.vehicle_id;
+
+  const handleFixSent = useCallback((fix: { longitude: number; latitude: number; speedKmh: number | null; headingDeg: number | null; timestamp: string }) => {
+    if (vehicleId) {
+      setDriverMarker({
+        id: vehicleId,
+        lngLat: [fix.longitude, fix.latitude],
+        label: trip.vehicleNumber || "My Vehicle",
+        speedKmh: fix.speedKmh,
+        heading: fix.headingDeg,
+        isCurrentDriver: true,
+        isStale: false,
+        updatedAt: fix.timestamp,
+      });
+    }
+  }, [vehicleId, trip.vehicleNumber]);
+
   const {
     isTracking,
     startTracking,
@@ -67,23 +83,8 @@ export default function DriverDashboardPage() {
     lastSyncedAt,
   } = useGpsTracker({
     minIntervalMs: 5000,
+    onFixSent: handleFixSent,
   });
-
-  // Keep driver marker in sync with latest local GPS fix
-  useEffect(() => {
-    if (lastFix && vehicleId) {
-      setDriverMarker({
-        id: vehicleId,
-        lngLat: [lastFix.longitude, lastFix.latitude],
-        label: trip.vehicleNumber || "My Vehicle",
-        speedKmh: lastFix.speedKmh,
-        heading: lastFix.headingDeg,
-        isCurrentDriver: true,
-        isStale: false,
-        updatedAt: lastFix.timestamp,
-      });
-    }
-  }, [lastFix, vehicleId, trip.vehicleNumber]);
 
   // Connect to SSE stream for backend-confirmed telemetry & trip reroute events
   useEffect(() => {

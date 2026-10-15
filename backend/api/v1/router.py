@@ -9,6 +9,7 @@ from backend.api.v1.events import router as events_router
 from backend.api.v1.evidence import router as evidence_router
 from backend.api.v1.incidents import router as incidents_router
 from backend.api.v1.ml import router as ml_router
+from backend.api.v1.risk import router as risk_router
 from backend.api.v1.roads import router as roads_router
 from backend.api.v1.routes import router as routes_router
 from backend.api.v1.satellite import router as satellite_router
@@ -25,6 +26,7 @@ api_v1_router.include_router(roads_router)
 api_v1_router.include_router(incidents_router)
 api_v1_router.include_router(evidence_router)
 api_v1_router.include_router(ml_router)
+api_v1_router.include_router(risk_router)
 api_v1_router.include_router(satellite_router)
 api_v1_router.include_router(weather_router)
 api_v1_router.include_router(traffic_router)

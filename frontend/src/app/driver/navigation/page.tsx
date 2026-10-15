@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -56,38 +56,36 @@ export default function ActiveNavigationPage() {
   const [backendInfo, setBackendInfo] = useState<BackendInfoResponse | null>(null);
   const [selectedRoad, setSelectedRoad] = useState<RoadFeatureProperties | null>(null);
   const [activeBackendTrip, setActiveBackendTrip] = useState<BackendTripItem | null>(null);
-  const [isCompleting, setIsCompleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [telemetryStatus, setTelemetryStatus] = useState<string | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [driverMarker, setDriverMarker] = useState<VehicleMarkerData | null>(null);
   const [rerouteNotice, setRerouteNotice] = useState<string | null>(null);
+
+  const handleFixSent = useCallback((fix: { longitude: number; latitude: number; speedKmh: number | null; headingDeg: number | null; timestamp: string }) => {
+    if (activeBackendTrip?.vehicle_id) {
+      setDriverMarker({
+        id: activeBackendTrip.vehicle_id,
+        lngLat: [fix.longitude, fix.latitude],
+        label: activeBackendTrip.vehicle?.registration_number || "My Vehicle",
+        speedKmh: fix.speedKmh,
+        heading: fix.headingDeg,
+        isCurrentDriver: true,
+        isStale: false,
+        updatedAt: fix.timestamp,
+      });
+    }
+  }, [activeBackendTrip]);
 
   const {
     isTracking,
     startTracking,
     stopTracking,
-    lastFix,
     trackingError,
     lastSyncedAt,
   } = useGpsTracker({
     minIntervalMs: 5000,
+    onFixSent: handleFixSent,
   });
-
-  // Keep marker updated with latest local GPS fix
-  useEffect(() => {
-    if (lastFix && activeBackendTrip?.vehicle_id) {
-      setDriverMarker({
-        id: activeBackendTrip.vehicle_id,
-        lngLat: [lastFix.longitude, lastFix.latitude],
-        label: activeBackendTrip.vehicle?.registration_number || "My Vehicle",
-        speedKmh: lastFix.speedKmh,
-        heading: lastFix.headingDeg,
-        isCurrentDriver: true,
-        isStale: false,
-        updatedAt: lastFix.timestamp,
-      });
-    }
-  }, [lastFix, activeBackendTrip]);
 
   // Connect to SSE stream for live updates
   useEffect(() => {
@@ -122,7 +120,7 @@ export default function ActiveNavigationPage() {
     return () => {
       unsubscribe();
     };
-  }, [activeBackendTrip?.vehicle_id, activeBackendTrip?.id]);
+  }, [activeBackendTrip?.vehicle_id, activeBackendTrip?.id, activeBackendTrip?.vehicle?.registration_number]);
 
   useEffect(() => {
     api.get<BackendInfoResponse>("/backend-api/info")
@@ -214,6 +212,23 @@ export default function ActiveNavigationPage() {
             </span>
           </div>
         </div>
+
+        {/* Live Reroute Event Banner */}
+        {rerouteNotice && (
+          <div className="mb-3 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>⚠️ {rerouteNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRerouteNotice(null)}
+              className="text-amber-700 hover:text-amber-950 font-bold text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Main Content: Map (Left/Center) + Route Details Panel (Right) */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0 overflow-hidden">

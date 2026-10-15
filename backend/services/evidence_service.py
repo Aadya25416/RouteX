@@ -310,17 +310,41 @@ class EvidenceService:
         now = datetime.now(timezone.utc)
         lease_cutoff = now - timedelta(minutes=settings.ML_CLAIM_TIMEOUT_MINUTES)
 
-        # If already IN_PROGRESS and lease has not expired, reject claim
+        # If already IN_PROGRESS and lease has not expired: allow same worker (idempotent), reject other workers
         if evidence.processing_status == "IN_PROGRESS" and evidence.claimed_at and evidence.claimed_at >= lease_cutoff:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Evidence '{evidence_id}' is actively claimed by worker '{evidence.claimed_by}' until lease expires.",
-            )
+            if evidence.claimed_by == worker_id:
+                # Same worker renewing/reclaiming its active task
+                evidence.claimed_at = now
+                evidence.updated_at = now
+                await self.session.commit()
+                await self.session.refresh(evidence)
+                return evidence
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Evidence '{evidence_id}' is actively claimed by worker '{evidence.claimed_by}' until lease expires.",
+                )
 
         if evidence.processing_status == "COMPLETED":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Evidence '{evidence_id}' is already COMPLETED and cannot be claimed.",
+            )
+
+        # Bounded retries: prevent permanently stuck tasks in infinite retry loop
+        meta = dict(evidence.acquisition_metadata or {})
+        attempts = int(meta.get("claim_attempts", 0)) + 1
+        meta["claim_attempts"] = attempts
+        evidence.acquisition_metadata = meta
+
+        if attempts > 3:
+            evidence.processing_status = "FAILED"
+            evidence.processing_error = f"Maximum claim attempts ({attempts - 1}) exceeded. Evidence permanently marked FAILED."
+            evidence.updated_at = now
+            await self.session.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Evidence '{evidence_id}' exceeded max processing attempts ({attempts - 1}) and was marked FAILED.",
             )
 
         evidence.processing_status = "IN_PROGRESS"
@@ -331,7 +355,7 @@ class EvidenceService:
         await self.session.commit()
         await self.session.refresh(evidence)
 
-        logger.info(f"Worker '{worker_id}' successfully claimed evidence '{evidence_id}'.")
+        logger.info(f"Worker '{worker_id}' successfully claimed evidence '{evidence_id}' (attempt {attempts}).")
         return evidence
 
     async def submit_task_result(
@@ -346,6 +370,7 @@ class EvidenceService:
     ) -> IncidentEvidence:
         """
         Records the inference result or failure reported by an ML worker.
+        Idempotent: Repeated submissions for an already completed task return cleanly.
         """
         evidence = await self.session.get(IncidentEvidence, evidence_id, with_for_update=True)
         if not evidence:
@@ -353,6 +378,11 @@ class EvidenceService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Evidence '{evidence_id}' not found.",
             )
+
+        # Idempotency guard: If already completed with identical status, return cleanly
+        if evidence.processing_status == "COMPLETED" and status_val == "COMPLETED":
+            logger.info(f"Evidence '{evidence_id}' is already COMPLETED. Returning existing result idempotently.")
+            return evidence
 
         now = datetime.now(timezone.utc)
         evidence.processing_status = status_val
@@ -451,4 +481,8 @@ def to_ml_task_response(e: IncidentEvidence) -> MLEvidenceTaskResponse:
         processing_status=e.processing_status,
         claimed_by=e.claimed_by,
         claimed_at=e.claimed_at,
+        model_detection_class=e.model_detection_class,
+        model_confidence=e.model_confidence,
+        model_metadata=e.model_metadata,
+        processing_error=e.processing_error,
     )

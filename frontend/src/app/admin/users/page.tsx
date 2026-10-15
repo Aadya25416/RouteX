@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import RouteGuard from "@/components/auth/RouteGuard";
 import { api, ApiError } from "@/lib/api";

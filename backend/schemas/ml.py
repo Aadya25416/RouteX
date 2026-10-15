@@ -25,6 +25,10 @@ class MLEvidenceTaskResponse(BaseModel):
     processing_status: str
     claimed_by: str | None = None
     claimed_at: datetime | None = None
+    model_detection_class: str | None = None
+    model_confidence: float | None = None
+    model_metadata: dict | None = None
+    processing_error: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
