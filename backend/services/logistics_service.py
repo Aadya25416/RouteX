@@ -1075,6 +1075,35 @@ class LogisticsService:
                 },
             )
 
+            # Generate alert for successful reroute
+            try:
+                from backend.services.alert_service import AlertService
+                alert_service = AlertService(session=self.session, event_publisher=self.publisher)
+                await alert_service.create_alert(
+                    event_type="trip.rerouted",
+                    severity="warning" if blocked_segments_on_route else "info",
+                    message=(
+                        f"Trip #{str(trip.id)[:8]} rerouted: avoided {len(blocked_segments_on_route)} blocked segments."
+                        if blocked_segments_on_route
+                        else f"Trip #{str(trip.id)[:8]} rerouted: route recalculated successfully."
+                    ),
+                    recipient_role="dispatcher",
+                    recipient_user_id=trip.driver_id,
+                    entity_type="trip",
+                    entity_id=str(trip.id),
+                    details={
+                        "trip_id": str(trip.id),
+                        "vehicle_id": str(trip.vehicle_id) if trip.vehicle_id else None,
+                        "driver_id": str(trip.driver_id) if trip.driver_id else None,
+                        "previous_route_id": str(prev_route_id) if prev_route_id else None,
+                        "new_route_id": str(new_route.id) if new_route and new_route.id else None,
+                        "blocked_segments": blocked_segments_on_route,
+                    },
+                    dedup_key=f"alert:trip_rerouted:{trip.id}:{new_route.id}",
+                )
+            except Exception as alert_exc:
+                logger.warning(f"Failed to create alert for rerouted trip {trip.id}: {alert_exc}")
+
             return RerouteResponse(
                 trip_id=trip.id,
                 status="REROUTED",
@@ -1106,6 +1135,29 @@ class LogisticsService:
                         "blocked_segments": blocked_segments_on_route,
                     },
                 )
+
+                # Generate critical alert for unroutable trip
+                try:
+                    from backend.services.alert_service import AlertService
+                    alert_service = AlertService(session=self.session, event_publisher=self.publisher)
+                    await alert_service.create_alert(
+                        event_type="trip.no_safe_route",
+                        severity="critical",
+                        message=f"CRITICAL: Trip #{str(trip.id)[:8]} has no safe alternate route available! Immediate dispatcher intervention required.",
+                        recipient_role="dispatcher",
+                        recipient_user_id=trip.driver_id,
+                        entity_type="trip",
+                        entity_id=str(trip.id),
+                        details={
+                            "trip_id": str(trip.id),
+                            "vehicle_id": str(trip.vehicle_id) if trip.vehicle_id else None,
+                            "driver_id": str(trip.driver_id) if trip.driver_id else None,
+                            "blocked_segments": blocked_segments_on_route,
+                        },
+                        dedup_key=f"alert:trip_no_safe_route:{trip.id}:{':'.join(sorted(blocked_segments_on_route))}",
+                    )
+                except Exception as alert_exc:
+                    logger.warning(f"Failed to create NO_SAFE_ROUTE alert for trip {trip.id}: {alert_exc}")
 
                 return RerouteResponse(
                     trip_id=trip.id,
@@ -1146,6 +1198,29 @@ class LogisticsService:
             overlap = set(trip.current_route.ordered_segment_ids).intersection(set(newly_blocked_segment_ids))
             if overlap:
                 logger.info(f"Trip {trip.id} route disrupted by blocked segments {overlap}. Recalculating route...")
+                try:
+                    from backend.services.alert_service import AlertService
+                    alert_service = AlertService(session=self.session, event_publisher=self.publisher)
+                    sorted_overlap = sorted(list(overlap))
+                    await alert_service.create_alert(
+                        event_type="disruption.trip_affected",
+                        severity="high",
+                        message=f"Active trip #{str(trip.id)[:8]} is affected by road disruption on segment(s): {', '.join(sorted_overlap)}.",
+                        recipient_role="dispatcher",
+                        recipient_user_id=trip.driver_id,
+                        entity_type="trip",
+                        entity_id=str(trip.id),
+                        details={
+                            "trip_id": str(trip.id),
+                            "vehicle_id": str(trip.vehicle_id) if trip.vehicle_id else None,
+                            "driver_id": str(trip.driver_id) if trip.driver_id else None,
+                            "blocked_segments": sorted_overlap,
+                        },
+                        dedup_key=f"alert:trip_disrupted:{trip.id}:{':'.join(sorted_overlap)}",
+                    )
+                except Exception as alert_exc:
+                    logger.warning(f"Failed to create disruption alert for trip {trip.id}: {alert_exc}")
+
                 resp = await self.reroute_trip(
                     trip_id=trip.id,
                     reason=f"Automated disruption reroute: segments {list(overlap)} confirmed BLOCKED.",

@@ -6,6 +6,7 @@
 
 import { getAccessToken, api } from "./api";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RouteXEvent<T = any> {
   event_id: string;
   schema_version: string;
@@ -22,7 +23,8 @@ export interface RouteXEvent<T = any> {
     | "incident.resolved"
     | "road.status_changed"
     | "weather.updated"
-    | "alert.created";
+    | "alert.created"
+    | "alert.acknowledged";
   entity_id: string;
   timestamp: string;
   source: string;
@@ -165,18 +167,12 @@ export function connectEventStream(options: EventStreamOptions): () => void {
         for (const block of blocks) {
           if (!block.trim()) continue;
 
-          let eventType = "message";
           let eventDataRaw = "";
-          let eventId = "";
 
           const lines = block.split("\n");
           for (const line of lines) {
-            if (line.startsWith("event:")) {
-              eventType = line.replace("event:", "").trim();
-            } else if (line.startsWith("data:")) {
+            if (line.startsWith("data:")) {
               eventDataRaw = line.replace("data:", "").trim();
-            } else if (line.startsWith("id:")) {
-              eventId = line.replace("id:", "").trim();
             }
           }
 
@@ -201,8 +197,9 @@ export function connectEventStream(options: EventStreamOptions): () => void {
           }
         }
       }
-    } catch (err: any) {
-      if (err?.name === "AbortError" || isAborted) {
+    } catch (err: unknown) {
+      const errObj = err as { name?: string };
+      if (errObj?.name === "AbortError" || isAborted) {
         return;
       }
       notifyStatus("disconnected");

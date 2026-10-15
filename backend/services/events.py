@@ -45,6 +45,8 @@ class EventPublisher:
             stream = settings.REDIS_STREAM_VEHICLES
         elif event_type.startswith("trip."):
             stream = settings.REDIS_STREAM_TRIPS
+        elif event_type.startswith("alert."):
+            stream = settings.REDIS_STREAM_ALERTS
         elif event_type.startswith("evidence."):
             stream = settings.REDIS_STREAM_EVIDENCE
         else:

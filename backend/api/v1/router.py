@@ -1,7 +1,9 @@
 """API v1 Router aggregation."""
 
 from fastapi import APIRouter
+from backend.api.v1.alerts import router as alerts_router
 from backend.api.v1.auth import router as auth_router
+from backend.api.v1.dashboard import router as dashboard_router
 from backend.api.v1.deliveries import router as deliveries_router
 from backend.api.v1.events import router as events_router
 from backend.api.v1.evidence import router as evidence_router
@@ -31,4 +33,6 @@ api_v1_router.include_router(deliveries_router)
 api_v1_router.include_router(trips_router)
 api_v1_router.include_router(routes_router)
 api_v1_router.include_router(events_router)
+api_v1_router.include_router(alerts_router)
+api_v1_router.include_router(dashboard_router)
 
