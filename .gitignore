@@ -57,10 +57,26 @@ data/cache/
 data/osm/
 data/evidence/
 data/media/
+data/road_damage/
+data/satellite/
+data/road_extraction/
+data/risk_features/
 *.osm
 *.pbf
 *.geojson.cache
 .cache/
+
+# ML model weights (large files)
+ml/models/yolo26/*.pt
+ml/models/yolo26/*.onnx
+ml/models/road_extraction/*.pt
+ml/models/road_extraction/*.onnx
+# Keep .gitkeep files
+!ml/models/**/.gitkeep
+
+# GeoTIFF and raster files
+*.tif
+*.tiff
 
 # Logs
 *.log
