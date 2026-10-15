@@ -1,7 +1,7 @@
-/* ================================================================
-   RouteX Marketing Footer CSS
-   Light-theme, multi-column professional footer for marketing pages.
-   Used on /, /home, and /login.
+﻿/* ================================================================
+   RouteX Standardized Global Footer CSS
+   Production-quality, multi-column logistics SaaS reference footer.
+   Used across all public pages, maps, driver portal, and admin console.
    ================================================================ */
 
 .home-footer {
@@ -12,20 +12,21 @@
   border-top: 1px solid #DCE5D8;
   padding: 64px 0 36px;
   box-sizing: border-box;
-  font-family: var(--font-geist-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin-top: auto;
 }
 
 .home-footer-container {
-  max-width: 1280px;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 32px;
   box-sizing: border-box;
 }
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1.3fr;
-  gap: 36px;
+  grid-template-columns: 2.2fr 1fr 1fr 1fr 1.3fr;
+  gap: 40px;
   margin-bottom: 48px;
 }
 
@@ -35,7 +36,7 @@
 }
 
 .footer-col-brand {
-  padding-right: 16px;
+  padding-right: 20px;
 }
 
 .footer-brand {
@@ -69,14 +70,15 @@
   text-transform: uppercase;
   background-color: #DDF4E8;
   color: #12432A;
-  padding: 2px 6px;
+  padding: 2.5px 7px;
   border-radius: 4px;
   margin-left: 8px;
   letter-spacing: 0.05em;
+  border: 1px solid #B7E4CD;
 }
 
 .footer-brand-desc {
-  font-size: 13.5px;
+  font-size: 14px;
   color: #71877D;
   line-height: 1.6;
   max-width: 320px;
@@ -92,8 +94,8 @@
   color: #193B32;
   background-color: #F1F4E8;
   border: 1px solid #DCE5D8;
-  padding: 5px 10px;
-  border-radius: 8px;
+  padding: 5px 12px;
+  border-radius: 9999px;
   width: fit-content;
 }
 
@@ -111,12 +113,12 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 12px;
 }
 
 .footer-link {
   color: #71877D;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   transition: color 0.15s ease;
@@ -131,7 +133,7 @@
 .footer-link:focus-visible {
   color: #16A779;
   outline: 2px solid #16A779;
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .footer-contact-list {
@@ -140,21 +142,21 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 13px;
 }
 
 .contact-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 13.5px;
   color: #71877D;
   line-height: 1.4;
 }
 
 .contact-icon {
   color: #16A779;
-  font-size: 14px;
+  font-size: 15px;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -167,7 +169,7 @@
 
 .contact-text-sub {
   color: #8F9E97;
-  font-size: 11.5px;
+  font-size: 12px;
   display: block;
 }
 
@@ -177,10 +179,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #8F9E97;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
 }
 
 .footer-copyright {
@@ -194,6 +196,12 @@
 
 /* Responsive Breakpoints */
 @media (max-width: 1024px) {
+  .home-footer {
+    padding: 52px 0 32px;
+  }
+  .home-footer-container {
+    padding: 0 24px;
+  }
   .footer-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 32px;
@@ -207,12 +215,15 @@
 
 @media (max-width: 640px) {
   .home-footer {
-    padding: 48px 0 28px;
+    padding: 44px 0 28px;
+  }
+  .home-footer-container {
+    padding: 0 20px;
   }
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 28px;
-    margin-bottom: 36px;
+    margin-bottom: 32px;
   }
   .footer-col-brand {
     grid-column: span 1;

@@ -1,18 +1,20 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
 import { getStatusColor } from "@/components/RoadMap";
 import { api } from "@/lib/api";
+import HomeFooter from "@/components/home/HomeFooter";
 
 // Dynamically import MapLibre component with SSR disabled
 const RoadMap = dynamic(() => import("@/components/RoadMap"), {
   ssr: false,
   loading: () => (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-zinc-900 text-zinc-300 gap-3">
-      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm font-medium">Initializing MapLibre GL engine...</p>
+    <div className="flex flex-col items-center justify-center w-full h-full bg-[#EAF2E7] text-[#193B32] gap-3">
+      <div className="w-8 h-8 border-3 border-[#16A779] border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm font-semibold">Initializing MapLibre GL road network engine...</p>
     </div>
   ),
 });
@@ -106,74 +108,101 @@ export default function RoadNetworkPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans">
-      {/* Top Header: Phase 1 Read-Only Status & Corridor Info */}
-      <header className="flex flex-wrap items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur z-20 gap-3">
+    <div className="flex flex-col min-h-screen w-full bg-[#FAFBF7] text-[#193B32]">
+      {/* Top Header: RouteX Logistics Brand & Status */}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between px-6 py-3.5 border-b border-[#DCE5D8] bg-white/95 backdrop-blur-md shadow-xs gap-3">
         <div className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-1.5 text-decoration-none group" aria-label="RouteX Home">
+            <span className="text-xl font-black tracking-tight text-[#193B32] group-hover:text-[#16A779] transition-colors">
+              Route<span className="text-[#16A779]">X</span>
+            </span>
+            <span className="text-[10px] font-bold uppercase bg-[#DDF4E8] text-[#12432A] px-2 py-0.5 rounded tracking-wide border border-[#B7E4CD]">
+              Logistics
+            </span>
+          </Link>
+          <span className="text-[#DCE5D8] hidden sm:inline" aria-hidden="true">|</span>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-base font-bold tracking-tight text-white">RouteX</h1>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#16A779] animate-pulse" aria-hidden="true" />
+            <h1 className="text-sm font-bold text-[#193B32]">
+              Guwahati–Tawang Road Network
+            </h1>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
-            Phase 1: Read-Only Road Map
-          </span>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-zinc-400">
-          <div>
-            <span className="text-zinc-500">Corridor:</span>{" "}
-            <span className="font-semibold text-zinc-200">
-              {backendInfo?.corridor?.name || "Guwahati-Tawang (Configured)"}
+        <div className="flex items-center flex-wrap gap-4 text-xs">
+          <div className="hidden md:flex items-center gap-2 text-[#71877D]">
+            <span>Corridor:</span>
+            <span className="font-semibold text-[#193B32] bg-[#F1F4E8] px-2 py-0.5 rounded-full border border-[#DCE5D8]">
+              {backendInfo?.corridor?.name || "Guwahati–Tawang"}
             </span>
           </div>
-          <div>
-            <span className="text-zinc-500">Loaded Segments:</span>{" "}
-            <span className="font-semibold text-zinc-200">
-              {roadsData ? `${roadsData.features.length} segments` : "0 (offline)"}
+
+          <div className="flex items-center gap-2 text-[#71877D]">
+            <span>Loaded:</span>
+            <span className="font-semibold text-[#12432A] bg-[#DDF4E8] px-2 py-0.5 rounded-full border border-[#B7E4CD]">
+              {roadsData ? `${roadsData.features.length} segments` : "Connecting..."}
             </span>
           </div>
+
+          <nav className="flex items-center gap-2 font-semibold">
+            <Link
+              href="/home"
+              className="px-3 py-1.5 rounded-full text-[#71877D] hover:text-[#193B32] hover:bg-[#F1F4E8] transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              href="/driver"
+              className="px-3 py-1.5 rounded-full text-[#71877D] hover:text-[#193B32] hover:bg-[#F1F4E8] transition-colors"
+            >
+              Driver
+            </Link>
+            <Link
+              href="/admin"
+              className="px-3 py-1.5 rounded-full bg-[#12432A] text-white hover:bg-[#0d3420] transition-colors"
+            >
+              Admin
+            </Link>
+          </nav>
         </div>
       </header>
 
-      {/* Main Map View Area */}
-      <main className="relative flex-1 w-full h-full overflow-hidden">
+      {/* Main Map Canvas Area */}
+      <main className="relative w-full h-[calc(100vh-140px)] min-h-[620px] flex-1">
         {/* Map Component */}
         <RoadMap
           backendInfo={backendInfo}
           roadsData={roadsData}
           onSelectRoad={setSelectedRoad}
+          className="w-full h-full relative"
         />
 
         {/* Loading Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-zinc-950/75 backdrop-blur-sm">
-            <div className="flex flex-col items-center p-6 rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl max-w-sm text-center">
-              <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-              <h2 className="text-sm font-semibold text-white mb-1">Loading Road Network</h2>
-              <p className="text-xs text-zinc-400">{loadingStep}</p>
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#FAFBF7]/85 backdrop-blur-xs">
+            <div className="flex flex-col items-center p-6 rounded-2xl bg-white border border-[#DCE5D8] shadow-2xl max-w-sm text-center">
+              <div className="w-9 h-9 border-3 border-[#16A779] border-t-transparent rounded-full animate-spin mb-3" />
+              <h2 className="text-sm font-bold text-[#193B32] mb-1">Loading Road Network</h2>
+              <p className="text-xs text-[#71877D] animate-pulse">{loadingStep}</p>
             </div>
           </div>
         )}
 
-        {/* Honest Error Overlay: Backend Unavailable */}
+        {/* Offline / Backend Error Overlay */}
         {error && !isLoading && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm p-4">
-            <div className="max-w-md w-full bg-zinc-900 border border-red-500/40 rounded-xl p-6 shadow-2xl">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/35 backdrop-blur-xs p-4">
+            <div className="p-6 rounded-2xl bg-white border border-[#FCE1B6] shadow-2xl max-w-md w-full">
               <div className="flex items-center gap-3 mb-3">
-                <span className="p-2 rounded-lg bg-red-500/10 text-red-400 text-lg">⚠️</span>
+                <span className="text-2xl" aria-hidden="true">⚠️</span>
                 <div>
-                  <h2 className="text-base font-bold text-red-200">Backend Unavailable</h2>
-                  <p className="text-xs text-red-400">Unable to fetch canonical road network</p>
+                  <h2 className="text-sm font-bold text-[#193B32]">Backend Connection Offline</h2>
+                  <p className="text-xs text-[#DC4848] font-medium">{error}</p>
                 </div>
               </div>
 
-              <div className="p-3 mb-4 rounded bg-zinc-950/70 border border-zinc-800 text-xs font-mono text-zinc-300 break-words">
-                {error}
-              </div>
-
-              <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
+              <p className="text-xs text-[#71877D] mb-4 leading-relaxed">
                 The frontend is running, but the RouteX FastAPI service is not reachable at{" "}
-                <code className="text-zinc-300 bg-zinc-800 px-1 py-0.5 rounded">http://127.0.0.1:8000</code>.
+                <code className="text-[#193B32] bg-[#F1F4E8] px-1 py-0.5 rounded font-mono">http://127.0.0.1:8000</code>.
                 Per master PRD rules, <strong>no synthetic or mock roads</strong> will be fabricated.
               </p>
 
@@ -181,12 +210,12 @@ export default function RoadNetworkPage() {
                 <button
                   type="button"
                   onClick={loadData}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                  className="px-4 py-2 text-xs font-semibold rounded-full bg-[#16A779] hover:bg-[#128a63] text-white transition-colors cursor-pointer"
                 >
                   Retry Connection
                 </button>
-                <span className="text-[11px] text-zinc-500">
-                  Run: <code className="text-zinc-400">uvicorn backend.main:app --port 8000</code>
+                <span className="text-[11px] text-[#8F9E97]">
+                  Run: <code className="text-[#193B32] font-mono">uv run uvicorn backend.main:app</code>
                 </span>
               </div>
             </div>
@@ -194,91 +223,94 @@ export default function RoadNetworkPage() {
         )}
 
         {/* Floating Road Status Legend */}
-        <aside className="absolute top-4 left-4 z-10 w-72 bg-zinc-900/95 border border-zinc-800 rounded-lg shadow-xl backdrop-blur p-3.5 text-xs">
-          <h2 className="font-bold text-zinc-200 mb-2.5 flex items-center justify-between">
+        <aside className="absolute top-4 left-4 z-10 w-76 bg-white/95 border border-[#DCE5D8] rounded-2xl shadow-xl backdrop-blur-md p-4 text-xs text-[#193B32]">
+          <h2 className="font-bold text-[#193B32] mb-2.5 flex items-center justify-between text-xs">
             <span>Road Segment Status</span>
-            <span className="text-[10px] font-normal text-zinc-500 uppercase">Backend Spec</span>
+            <span className="text-[10px] font-bold text-[#12432A] bg-[#DDF4E8] px-1.5 py-0.5 rounded border border-[#B7E4CD] uppercase">
+              Live Spec
+            </span>
           </h2>
 
-          <div className="space-y-1.5 mb-3">
+          <div className="space-y-2 mb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getStatusColor("OPEN") }} />
-                <span className="text-zinc-300 font-medium">OPEN</span>
+                <span className="text-[#193B32] font-semibold">OPEN</span>
               </div>
-              <span className="text-[11px] text-zinc-500">Passable</span>
+              <span className="text-[11px] text-[#71877D]">Passable corridor</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getStatusColor("AT_RISK") }} />
-                <span className="text-zinc-300 font-medium">AT_RISK</span>
+                <span className="text-[#193B32] font-semibold">AT_RISK</span>
               </div>
-              <span className="text-[11px] text-zinc-500">Hazard / Weather caution</span>
+              <span className="text-[11px] text-[#71877D]">Weather / hazard caution</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getStatusColor("RESTRICTED") }} />
-                <span className="text-zinc-300 font-medium">RESTRICTED</span>
+                <span className="text-[#193B32] font-semibold">RESTRICTED</span>
               </div>
-              <span className="text-[11px] text-zinc-500">Weight / access limits</span>
+              <span className="text-[11px] text-[#71877D]">Weight / access limits</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getStatusColor("BLOCKED") }} />
-                <span className="text-zinc-300 font-medium">BLOCKED</span>
+                <span className="text-[#193B32] font-semibold">BLOCKED</span>
               </div>
-              <span className="text-[11px] text-zinc-500">Hard closure</span>
+              <span className="text-[11px] text-[#71877D]">Hard road closure</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: getStatusColor("UNKNOWN") }} />
-                <span className="text-zinc-300 font-medium">UNKNOWN</span>
+                <span className="text-[#193B32] font-semibold">UNKNOWN</span>
               </div>
-              <span className="text-[11px] text-zinc-500">Unverified</span>
+              <span className="text-[11px] text-[#71877D]">Unverified segment</span>
             </div>
           </div>
 
-          <div className="pt-2.5 border-t border-zinc-800 text-[11px] text-zinc-400 space-y-1">
-            <p className="text-amber-400/90 font-medium">
-              ⚠️ Policy rule: UNKNOWN is never treated as safe or open.
+          <div className="pt-2.5 border-t border-[#E8EFE5] text-[11px] text-[#71877D] space-y-1">
+            <p className="text-[#A66007] font-semibold">
+              ⚠️ Policy: UNKNOWN is never treated as safe or open.
             </p>
-            <p className="text-zinc-500">
-              Safety Score: 0–100 (100 safest). Disruption Probability: 0–1.
+            <p className="text-[#8F9E97]">
+              Safety Score: 0–100 · Disruption Prob: 0.0–1.0
             </p>
           </div>
         </aside>
 
-        {/* Selected Road Segment Inspector (if segment selected) */}
+        {/* Selected Road Segment Inspector (if segment clicked) */}
         {selectedRoad && (
-          <aside className="absolute top-4 right-14 z-10 w-80 bg-zinc-900/95 border border-zinc-800 rounded-lg shadow-xl backdrop-blur p-4 text-xs">
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800">
-              <h2 className="font-bold text-zinc-200">Segment Inspector</h2>
+          <aside className="absolute top-4 right-14 z-10 w-84 bg-white/95 border border-[#DCE5D8] rounded-2xl shadow-xl backdrop-blur-md p-4 text-xs text-[#193B32]">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#E8EFE5]">
+              <h2 className="font-bold text-[#193B32] text-xs">Segment Inspector</h2>
               <button
                 type="button"
                 onClick={() => setSelectedRoad(null)}
-                className="text-zinc-500 hover:text-zinc-300 text-sm font-bold"
+                className="text-[#71877D] hover:text-[#193B32] text-sm font-bold cursor-pointer"
+                aria-label="Close inspector"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div>
-                <span className="text-zinc-500 text-[11px]">Name:</span>
-                <p className="font-semibold text-zinc-200">{selectedRoad.name || "Unnamed Segment"}</p>
+                <span className="text-[#8F9E97] text-[11px] block">Road Segment Name</span>
+                <p className="font-bold text-[#193B32]">{selectedRoad.name || "Unnamed Segment"}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Canonical ID:</span>
-                  <p className="font-mono text-[11px] text-zinc-300">{selectedRoad.id}</p>
+                  <span className="text-[#8F9E97] text-[11px] block">Canonical ID</span>
+                  <p className="font-mono text-[11px] text-[#71877D]">{selectedRoad.id}</p>
                 </div>
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Status:</span>
+                  <span className="text-[#8F9E97] text-[11px] block">Current Status</span>
                   <p className="font-bold" style={{ color: getStatusColor(selectedRoad.status) }}>
                     {selectedRoad.status}
                   </p>
@@ -287,27 +319,27 @@ export default function RoadNetworkPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Road Class:</span>
-                  <p className="capitalize text-zinc-300">{selectedRoad.road_class || "N/A"}</p>
+                  <span className="text-[#8F9E97] text-[11px] block">Road Class</span>
+                  <p className="capitalize text-[#193B32] font-medium">{selectedRoad.road_class || "N/A"}</p>
                 </div>
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Length:</span>
-                  <p className="text-zinc-300">
+                  <span className="text-[#8F9E97] text-[11px] block">Length</span>
+                  <p className="text-[#193B32] font-medium">
                     {selectedRoad.length_m ? `${(selectedRoad.length_m / 1000).toFixed(2)} km` : "N/A"}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8EFE5]">
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Safety Score:</span>
-                  <p className="font-semibold text-zinc-200">
+                  <span className="text-[#8F9E97] text-[11px] block">Safety Score</span>
+                  <p className="font-bold text-[#193B32]">
                     {selectedRoad.safety_score != null ? `${selectedRoad.safety_score.toFixed(1)} / 100` : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <span className="text-zinc-500 text-[11px]">Disruption Prob:</span>
-                  <p className="font-semibold text-zinc-200">
+                  <span className="text-[#8F9E97] text-[11px] block">Disruption Risk</span>
+                  <p className="font-bold text-[#193B32]">
                     {selectedRoad.disruption_probability != null
                       ? `${(selectedRoad.disruption_probability * 100).toFixed(1)}%`
                       : "Not evaluated"}
@@ -316,8 +348,8 @@ export default function RoadNetworkPage() {
               </div>
 
               {selectedRoad.status === "UNKNOWN" && (
-                <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px]">
-                  ⚠️ <strong>Unverified segment:</strong> Safety assessment pending backend operational evidence.
+                <div className="mt-2 p-2 rounded-lg bg-[#FFF8EB] border border-[#FCE1B6] text-[#A66007] text-[11px]">
+                  ⚠️ <strong>Unverified segment:</strong> Safety assessment pending field officer confirmation.
                 </div>
               )}
             </div>
@@ -325,17 +357,8 @@ export default function RoadNetworkPage() {
         )}
       </main>
 
-      {/* Bottom Footer: Attribution Display */}
-      <footer className="flex flex-wrap items-center justify-between px-5 py-2 border-t border-zinc-800 bg-zinc-950 text-[11px] text-zinc-400 z-20">
-        <div>
-          <span>{backendInfo?.attribution || "Road network data © OpenStreetMap contributors under ODbL"}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>Map tiles © OpenStreetMap contributors</span>
-          <span className="text-zinc-600">|</span>
-          <span>Engine: MapLibre GL JS</span>
-        </div>
-      </footer>
+      {/* Standardized Multi-Column RouteX Global Footer */}
+      <HomeFooter />
     </div>
   );
 }

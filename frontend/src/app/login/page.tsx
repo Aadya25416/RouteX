@@ -368,10 +368,10 @@ function SignupFormInner({ onSwitchTab }: { onSwitchTab: () => void }) {
 
   const upd =
     (f: keyof Pick<SignupState, "fullName" | "email" | "password" | "confirm">) =>
-    (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setState((s) => ({ ...s, [f]: ev.target.value, error: null }));
-      if (errs[f]) setErrs((e) => ({ ...e, [f]: undefined }));
-    };
+      (ev: React.ChangeEvent<HTMLInputElement>) => {
+        setState((s) => ({ ...s, [f]: ev.target.value, error: null }));
+        if (errs[f]) setErrs((e) => ({ ...e, [f]: undefined }));
+      };
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
