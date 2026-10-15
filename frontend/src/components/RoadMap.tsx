@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from "react";
 import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
 
 // Configure Web Worker URL for MapLibre in Next.js bundler
@@ -37,21 +38,44 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   sources: {
     osm: {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
       tileSize: 256,
+      maxzoom: 19,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
     },
   },
   layers: [
     {
+      id: "background-fallback",
+      type: "background",
+      paint: {
+        "background-color": "#EAF2E7",
+      },
+    },
+    {
       id: "osm-raster-layer",
       type: "raster",
       source: "osm",
       minzoom: 0,
       maxzoom: 19,
+      paint: {
+        "raster-opacity": 1,
+      },
     },
   ],
+};
+
+// Fallback bounds for Guwahati–Tawang corridor if backend bbox is unavailable
+export const FALLBACK_CORRIDOR_BBOX = {
+  south: 26.1,
+  west: 91.5,
+  north: 27.7,
+  east: 92.8,
 };
 
 // Status badge styling helper
@@ -285,7 +309,7 @@ export default function RoadMap({
   }, []);
 
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
 
     // Reinforce worker URL setup on client mount
     maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
@@ -318,7 +342,44 @@ export default function RoadMap({
       }
     });
 
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.resize();
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
+    map.on("load", () => {
+      map.resize();
+      const bbox = backendInfo?.corridor?.bbox || FALLBACK_CORRIDOR_BBOX;
+      fitCorridorBounds(map, bbox);
+      if (roadsData) {
+        addOrUpdateRoadSource(map, roadsData);
+      }
+    });
+
+    // Schedule resize triggers to handle layout shifts
+    const frameId = requestAnimationFrame(() => {
+      map.resize();
+    });
+    const timerId = setTimeout(() => {
+      map.resize();
+    }, 150);
+
+    const ro = typeof ResizeObserver !== "undefined" && mapContainerRef.current
+      ? new ResizeObserver(() => {
+          map.resize();
+        })
+      : null;
+    if (ro && mapContainerRef.current) {
+      ro.observe(mapContainerRef.current);
+    }
+
     return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(timerId);
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", handleResize);
       if (activePopupRef.current) {
         activePopupRef.current.remove();
       }
@@ -329,18 +390,18 @@ export default function RoadMap({
     };
   }, [customCenter, customZoom, hideNavControls]);
 
-  // Handle bounds update when backend info arrives
+  // Handle bounds update when backend info arrives or falls back
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !backendInfo?.corridor?.bbox) return;
+    if (!map) return;
+
+    const bbox = backendInfo?.corridor?.bbox || FALLBACK_CORRIDOR_BBOX;
 
     if (map.isStyleLoaded()) {
-      fitCorridorBounds(map, backendInfo.corridor.bbox);
+      fitCorridorBounds(map, bbox);
     } else {
       map.once("load", () => {
-        if (backendInfo?.corridor?.bbox) {
-          fitCorridorBounds(map, backendInfo.corridor.bbox);
-        }
+        fitCorridorBounds(map, bbox);
       });
     }
   }, [backendInfo]);
@@ -494,8 +555,15 @@ export default function RoadMap({
   }, [stopMarkers, hazardMarker]);
 
   return (
-    <div className={className || "relative w-full h-full min-h-[500px]"}>
-      <div ref={mapContainerRef} className="w-full h-full absolute inset-0" />
+    <div
+      className={className ? `relative min-h-[500px] ${className}` : "relative w-full h-full min-h-[500px]"}
+      style={{ minHeight: "500px", width: "100%", height: "100%" }}
+    >
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full absolute inset-0"
+        style={{ minHeight: "100%", minWidth: "100%", width: "100%", height: "100%" }}
+      />
     </div>
   );
 }

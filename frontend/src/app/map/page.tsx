@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
-import { getStatusColor } from "@/components/RoadMap";
+import { getStatusColor, FALLBACK_CORRIDOR_BBOX } from "@/components/RoadMap";
 import { api } from "@/lib/api";
 import HomeFooter from "@/components/home/HomeFooter";
 
@@ -168,7 +168,7 @@ export default function RoadNetworkPage() {
       </header>
 
       {/* Main Map Canvas Area */}
-      <main className="relative w-full h-[calc(100vh-140px)] min-h-[620px] flex-1">
+      <main className="relative w-full h-[calc(100vh-140px)] min-h-[620px] flex-1 flex flex-col" style={{ minHeight: "620px", position: "relative" }}>
         {/* Map Component */}
         <RoadMap
           backendInfo={backendInfo}
@@ -176,6 +176,24 @@ export default function RoadNetworkPage() {
           onSelectRoad={setSelectedRoad}
           className="w-full h-full relative"
         />
+
+
+        {/* Zero-Segments Empty Data Status Message (Requirement 8) */}
+        {!isLoading && !error && roadsData && roadsData.features.length === 0 && (
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 max-w-lg w-full px-4 pointer-events-none">
+            <div className="bg-white/95 backdrop-blur-md border border-[#DCE5D8] rounded-2xl shadow-xl p-3.5 text-center pointer-events-auto">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#193B32]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#16A779] animate-pulse" />
+                <span>Corridor Basemap Active</span>
+                <span className="text-[#8F9E97]">•</span>
+                <span className="text-[#71877D] font-medium">0 segments loaded from database</span>
+              </div>
+              <p className="text-[11px] text-[#71877D] mt-1 leading-normal">
+                The Guwahati–Tawang corridor basemap is fully active. Canonical road segments from the RouteX database will render automatically when available.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Loading Overlay */}
         {isLoading && (

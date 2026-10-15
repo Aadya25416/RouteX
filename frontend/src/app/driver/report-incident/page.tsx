@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -8,6 +8,7 @@ import DriverLayout from "@/components/driver/DriverLayout";
 import { DriverIncidentType } from "@/types/driver";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { searchLocations, reverseGeocodeCoordinates, GeocodeSuggestion } from "@/lib/geocoding";
 import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
 
 // Dynamically import RoadMap
@@ -156,8 +157,23 @@ function ReportHazardFormContent() {
 
   const [incidentType, setIncidentType] = useState<DriverIncidentType>(typeParam);
   const [description, setDescription] = useState("");
+
+  // Location and Geocoding State
   const [locationText, setLocationText] = useState("NH-27, near Bomdila, Arunachal Pradesh");
-  const [coords, setCoords] = useState<[number, number]>([92.4159, 27.2645]);
+  const [coords, setCoords] = useState<[number, number] | null>([92.4159, 27.2645]);
+  const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // Refs for debouncing, outside click, and stale request cancellation
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeReqIdRef = useRef(0);
+  const abortCtrlRef = useRef<AbortController | null>(null);
+
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{
@@ -180,9 +196,153 @@ function ReportHazardFormContent() {
       .catch(() => {});
   }, []);
 
-  const handleMapClick = (newCoords: [number, number]) => {
+  // Close suggestions dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        setActiveIndex(-1);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  // Cleanup pending search on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      if (abortCtrlRef.current) abortCtrlRef.current.abort();
+    };
+  }, []);
+
+  // Debounced Autocomplete Search Handler
+  const triggerDebouncedSearch = useCallback((query: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    const trimmed = query.trim();
+    if (trimmed.length < 3) {
+      setSuggestions([]);
+      setIsDropdownOpen(false);
+      setIsSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setIsDropdownOpen(true);
+    setSearchError(null);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      const currentReqId = ++activeReqIdRef.current;
+
+      if (abortCtrlRef.current) {
+        abortCtrlRef.current.abort();
+      }
+      abortCtrlRef.current = new AbortController();
+
+      try {
+        const results = await searchLocations(trimmed, abortCtrlRef.current.signal);
+        // Guard against stale response overwriting newer queries
+        if (currentReqId === activeReqIdRef.current) {
+          setSuggestions(results);
+          setActiveIndex(-1);
+          setIsSearching(false);
+        }
+      } catch (err: unknown) {
+        if (currentReqId === activeReqIdRef.current) {
+          if (err instanceof Error && err.name === "AbortError") return;
+          console.error("Location search error:", err);
+          setSearchError("Unable to search locations. Click the map to pin coordinates directly.");
+          setIsSearching(false);
+        }
+      }
+    }, 350);
+  }, []);
+
+  // Handle Location Input Text Change
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocationText(val);
+
+    // Invalidate previous coordinates when user manually edits text
+    // Never silently submit stale coordinates that do not match the displayed location
+    setCoords(null);
+
+    if (fieldErrors.location) {
+      setFieldErrors((prev) => { const next = { ...prev }; delete next.location; return next; });
+    }
+
+    triggerDebouncedSearch(val);
+  };
+
+  // Handle Suggestion Selection
+  const handleSelectSuggestion = (suggestion: GeocodeSuggestion) => {
+    setLocationText(suggestion.displayName);
+    setCoords([suggestion.lon, suggestion.lat]); // [lng, lat]
+    setIsDropdownOpen(false);
+    setActiveIndex(-1);
+    setSuggestions([]);
+
+    if (fieldErrors.location) {
+      setFieldErrors((prev) => { const next = { ...prev }; delete next.location; return next; });
+    }
+  };
+
+  // Keyboard navigation for suggestions
+  const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen || suggestions.length === 0) {
+      if (e.key === "ArrowDown" && locationText.trim().length >= 3) {
+        e.preventDefault();
+        triggerDebouncedSearch(locationText);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < suggestions.length) {
+        e.preventDefault();
+        handleSelectSuggestion(suggestions[activeIndex]);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsDropdownOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  // Reverse geocoding when user clicks the map
+  const handleMapClick = async (newCoords: [number, number]) => {
+    // 1. Immediately store exact clicked coordinates for payload and pin marker
     setCoords(newCoords);
-    setLocationText(`Corridor coordinate [${newCoords[1].toFixed(4)}, ${newCoords[0].toFixed(4)}]`);
+    setIsDropdownOpen(false);
+    setIsReverseGeocoding(true);
+
+    if (fieldErrors.location) {
+      setFieldErrors((prev) => { const next = { ...prev }; delete next.location; return next; });
+    }
+
+    // 2. Call reverse geocoding to resolve coordinates to a real-world address
+    try {
+      const address = await reverseGeocodeCoordinates(newCoords[1], newCoords[0]);
+      setLocationText(address);
+    } catch (err: unknown) {
+      console.warn("Reverse geocode failed:", err);
+      setLocationText(`Selected location (${newCoords[1].toFixed(4)}, ${newCoords[0].toFixed(4)})`);
+    } finally {
+      setIsReverseGeocoding(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,6 +361,8 @@ function ReportHazardFormContent() {
     }
     if (!locationText.trim()) {
       errors.location = "Location description is required.";
+    } else if (!coords) {
+      errors.location = "Please select a suggestion from the dropdown or click on the map to confirm coordinates.";
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -208,7 +370,7 @@ function ReportHazardFormContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || !coords) return;
 
     setIsSubmitting(true);
     setSubmitResult(null);
@@ -292,10 +454,12 @@ function ReportHazardFormContent() {
     }
   };
 
-  const hazardMarker = {
-    lngLat: coords,
-    label: incidentType.toUpperCase(),
-  };
+  const hazardMarker = coords
+    ? {
+        lngLat: coords,
+        label: incidentType.toUpperCase(),
+      }
+    : null;
 
   return (
     <div className="max-w-7xl mx-auto w-full flex flex-col gap-6">
@@ -408,32 +572,150 @@ function ReportHazardFormContent() {
             )}
           </div>
 
-          {/* 3. Location Field */}
-          <div>
-            <label htmlFor="hazard-loc" className="block text-sm font-semibold text-[#193B32] mb-1.5">
-              Location
-            </label>
+          {/* 3. Location Field with Autocomplete & Reverse Geocoding */}
+          <div ref={dropdownRef} className="relative">
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="hazard-loc" className="block text-sm font-semibold text-[#193B32]">
+                Location
+              </label>
+              {isReverseGeocoding ? (
+                <span className="text-xs text-[#16A779] font-medium flex items-center gap-1.5">
+                  <span className="w-3 h-3 border-2 border-[#16A779] border-t-transparent rounded-full animate-spin" />
+                  Resolving map address...
+                </span>
+              ) : coords ? (
+                <span className="text-[11px] font-mono text-[#5F756B] flex items-center gap-1">
+                  <span className="text-[#16A779] font-bold">✓</span>
+                  <span>[{coords[1].toFixed(4)}, {coords[0].toFixed(4)}]</span>
+                </span>
+              ) : null}
+            </div>
+
             <div className="relative">
+              {/* Map pin icon */}
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71877D] flex items-center pointer-events-none">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71877D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
               </span>
+
+              {/* Location Input */}
               <input
                 id="hazard-loc"
                 type="text"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={isDropdownOpen}
+                aria-autocomplete="list"
+                aria-controls="location-suggestions-list"
+                aria-activedescendant={activeIndex >= 0 ? `suggestion-${activeIndex}` : undefined}
                 value={locationText}
-                onChange={(e) => setLocationText(e.target.value)}
-                placeholder="NH-27, near Bomdila, Arunachal Pradesh"
-                className={`w-full py-2.5 pl-10 pr-3.5 rounded-xl bg-white border text-sm text-[#193B32] outline-none focus:border-[#16A779] transition-colors ${
+                onChange={handleLocationChange}
+                onKeyDown={handleLocationKeyDown}
+                onFocus={() => {
+                  if (locationText.trim().length >= 3 && suggestions.length > 0) {
+                    setIsDropdownOpen(true);
+                  }
+                }}
+                placeholder="Type road, village, town or landmark across India..."
+                className={`w-full py-2.5 pl-10 pr-9 rounded-xl bg-white border text-sm text-[#193B32] outline-none focus:border-[#16A779] transition-colors ${
                   fieldErrors.location ? "border-[#DC4848]" : "border-[#DCE5D8]"
                 }`}
               />
+
+              {/* Right status icon (spinner while searching or clear button) */}
+              {isSearching ? (
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
+                  <span className="w-4 h-4 border-2 border-[#16A779] border-t-transparent rounded-full animate-spin" />
+                </span>
+              ) : locationText ? (
+                <button
+                  type="button"
+                  title="Clear location"
+                  onClick={() => {
+                    setLocationText("");
+                    setCoords(null);
+                    setSuggestions([]);
+                    setIsDropdownOpen(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-[#71877D] hover:text-[#193B32] rounded-full hover:bg-[#F1F4E8] text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              ) : null}
+
+              {/* Suggestions Dropdown */}
+              {isDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#DCE5D8] rounded-xl shadow-lg max-h-64 overflow-y-auto overflow-x-hidden">
+                  {isSearching ? (
+                    <div className="p-3.5 text-xs text-[#71877D] flex items-center justify-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-[#16A779] border-t-transparent rounded-full animate-spin" />
+                      <span>Searching locations across India...</span>
+                    </div>
+                  ) : searchError ? (
+                    <div className="p-3.5 text-xs text-[#B45309] text-center bg-[#FFF8EB]">
+                      {searchError}
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="p-3.5 text-xs text-[#71877D] text-center">
+                      No places found matching &ldquo;{locationText}&rdquo;. Try entering a nearby road, town, village, or district.
+                    </div>
+                  ) : (
+                    <ul role="listbox" id="location-suggestions-list" className="py-1">
+                      {suggestions.map((item, idx) => {
+                        const isHighlighted = idx === activeIndex;
+                        return (
+                          <li
+                            key={item.id}
+                            id={`suggestion-${idx}`}
+                            role="option"
+                            aria-selected={isHighlighted}
+                            onClick={() => handleSelectSuggestion(item)}
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            className={`px-3.5 py-2.5 cursor-pointer flex items-start gap-2.5 transition-colors border-b border-[#F5F8F3] last:border-b-0 ${
+                              isHighlighted ? "bg-[#EAF5EE] text-[#12432A]" : "hover:bg-[#FAFBF7] text-[#193B32]"
+                            }`}
+                          >
+                            <span className="mt-0.5 text-[#16A779] shrink-0">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                            </span>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm font-semibold truncate leading-snug">
+                                {item.name}
+                              </span>
+                              <span className="text-xs text-[#71877D] truncate mt-0.5 leading-snug">
+                                {item.secondaryText}
+                              </span>
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-[#71877D] bg-[#F1F4E8] px-1.5 py-0.5 rounded self-center shrink-0">
+                              IN
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="text-xs text-[#71877D] mt-1.5">
-              Tip: Click anywhere on the map to pin exact incident coordinates.
-            </p>
+
+            {/* Error or guidance text */}
+            {fieldErrors.location ? (
+              <p className="text-xs text-[#DC4848] mt-1.5 font-medium">{fieldErrors.location}</p>
+            ) : !coords && locationText.trim().length >= 3 && !isSearching ? (
+              <p className="text-xs text-[#B45309] mt-1.5 flex items-center gap-1 font-medium">
+                <span>ℹ</span>
+                <span>Select a location suggestion from the dropdown, or click anywhere on the map to confirm coordinates.</span>
+              </p>
+            ) : (
+              <p className="text-xs text-[#71877D] mt-1.5">
+                Tip: Type a road or place name to pick a suggestion, or click anywhere on the map to automatically reverse-geocode coordinates.
+              </p>
+            )}
           </div>
 
           {/* 4. Add Photos (Optional) */}
@@ -501,7 +783,7 @@ function ReportHazardFormContent() {
           <div className="p-3.5 bg-white border-b border-[#DCE5D8] flex items-center justify-between z-10">
             <span className="text-sm font-bold text-[#193B32]">Selected Location Map</span>
             <span className="text-xs font-mono text-[#71877D]">
-              Lat: {coords[1].toFixed(3)}, Lng: {coords[0].toFixed(3)}
+              {coords ? `Lat: ${coords[1].toFixed(4)}, Lng: ${coords[0].toFixed(4)}` : "Click map to pin point"}
             </span>
           </div>
 
@@ -510,7 +792,7 @@ function ReportHazardFormContent() {
               backendInfo={backendInfo}
               roadsData={roadsData}
               hazardMarker={hazardMarker}
-              customCenter={coords}
+              customCenter={coords || [92.4159, 27.2645]}
               customZoom={8.5}
               onMapClick={handleMapClick}
               className="w-full h-full relative"
