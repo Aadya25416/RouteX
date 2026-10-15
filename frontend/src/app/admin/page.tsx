@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AlertsPanel from "@/components/admin/AlertsPanel";
@@ -35,14 +35,21 @@ export default function AdminOverviewPage() {
   const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
   const [latestSseEvent, setLatestSseEvent] = useState<RouteXEvent | null>(null);
 
+  const lastErrorRef = useRef<string | null>(null);
+
   const fetchDashboardMetrics = useCallback(async () => {
     try {
       const data = await api.get<DashboardMetricsResponse>("/api/v1/dashboard");
       setDashboardMetrics(data);
       setDashboardError(null);
+      lastErrorRef.current = null;
     } catch (err) {
-      console.error("Failed to load live dashboard metrics:", err);
-      setDashboardError(err instanceof Error ? err.message : "Failed to load dashboard metrics");
+      const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
+      if (lastErrorRef.current !== msg) {
+        console.warn("Live operational telemetry unavailable:", msg);
+        lastErrorRef.current = msg;
+      }
+      setDashboardError(msg);
     } finally {
       setIsLoadingDashboard(false);
     }
@@ -97,21 +104,33 @@ export default function AdminOverviewPage() {
 
     const initLoad = async () => {
       try {
-        const [dashData, rData, incData] = await Promise.all([
+        const [dashRes, rRes, incRes] = await Promise.allSettled([
           api.get<DashboardMetricsResponse>("/api/v1/dashboard"),
           api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500"),
           api.get<IncidentListResponse>("/api/v1/incidents?limit=5"),
         ]);
         if (!active) return;
-        if (dashData) {
-          setDashboardMetrics(dashData);
+
+        if (dashRes.status === "fulfilled" && dashRes.value) {
+          setDashboardMetrics(dashRes.value);
           setDashboardError(null);
+          lastErrorRef.current = null;
+        } else if (dashRes.status === "rejected") {
+          const err = dashRes.reason;
+          const msg = err instanceof Error ? err.message : "Failed to load dashboard metrics";
+          if (lastErrorRef.current !== msg) {
+            console.warn("Live operational telemetry unavailable:", msg);
+            lastErrorRef.current = msg;
+          }
+          setDashboardError(msg);
         }
-        if (rData && rData.features) {
-          setRoadsData(rData);
+
+        if (rRes.status === "fulfilled" && rRes.value?.features) {
+          setRoadsData(rRes.value);
         }
-        if (incData && incData.items && incData.items.length > 0) {
-          const mapped: AdminIncidentItem[] = incData.items.map((i) => ({
+
+        if (incRes.status === "fulfilled" && incRes.value?.items && incRes.value.items.length > 0) {
+          const mapped: AdminIncidentItem[] = incRes.value.items.map((i) => ({
             id: i.id,
             type: (i.incident_type as AdminIncidentItem["type"]) || "OTHER",
             status: (i.status as AdminIncidentItem["status"]) || "SUBMITTED",
@@ -231,13 +250,16 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        {/* Error banner if dashboard failed */}
+        {/* Non-blocking warning banner if live telemetry is temporarily degraded */}
         {dashboardError && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-700">
-            <span>Operational metrics warning: {dashboardError}. Displaying cached telemetry.</span>
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span>Operational telemetry temporarily unavailable ({dashboardError}). Active incidents and road network remain fully functional.</span>
+            </div>
             <button
               onClick={fetchDashboardMetrics}
-              className="font-bold underline ml-2"
+              className="px-3 py-1 bg-white border border-amber-300 rounded-lg font-bold text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
             >
               Retry
             </button>
