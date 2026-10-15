@@ -9,6 +9,7 @@ from backend.config import get_settings
 from backend.database import get_async_session
 from backend.models.users import User
 from backend.schemas.auth import (
+    DriverRegisterRequest,
     LoginRequest,
     LogoutRequest,
     RefreshTokenRequest,
@@ -19,6 +20,22 @@ from backend.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 settings = get_settings()
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register-driver", response_model=UserResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+async def register_driver(
+    payload: DriverRegisterRequest,
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> UserResponse:
+    """
+    Public driver self-registration endpoint.
+    Strictly forces the 'driver' role on the backend (never trusts client-supplied roles).
+    Enforces email uniqueness, Argon2id password hashing, and activates the account immediately.
+    """
+    service = AuthService(session)
+    user = await service.register_driver(payload=payload)
+    return UserResponse.model_validate(user)
 
 
 @router.post("/login", response_model=TokenResponse)

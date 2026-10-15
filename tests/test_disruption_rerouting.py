@@ -4,10 +4,20 @@ import uuid
 from datetime import datetime, timezone
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.roads import RoadSegmentState, RoadStatus
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_road_states(db_session: AsyncSession):
+    """Ensures road segment states are clean before and after disruption tests."""
+    yield
+    await db_session.execute(
+        update(RoadSegmentState).values(status=RoadStatus.UNKNOWN.value, safety_score=100.0)
+    )
+    await db_session.commit()
 
 
 @pytest.mark.asyncio

@@ -114,6 +114,7 @@ export async function apiClient<T = unknown>(
 
   const isAuthRoute =
     endpoint.includes("/api/v1/auth/login") ||
+    endpoint.includes("/api/v1/auth/register") ||
     endpoint.includes("/api/v1/auth/refresh") ||
     endpoint.includes("/api/v1/auth/logout");
 

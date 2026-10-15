@@ -55,6 +55,15 @@ class UserCreateRequest(BaseModel):
     preferred_language: str = Field("en", min_length=2, max_length=10)
 
 
+class DriverRegisterRequest(BaseModel):
+    """Driver self-registration request payload."""
+    email: EmailStr
+    full_name: str = Field(..., min_length=2, max_length=255)
+    password: str = Field(..., min_length=6, description="Account password (at least 6 characters)")
+    role: str | None = Field(None, description="Client role parameter; backend strictly forces role to driver")
+    preferred_language: str = Field("en", min_length=2, max_length=10)
+
+
 class UserUpdateRequest(BaseModel):
     """User profile update request."""
     full_name: str | None = Field(None, min_length=2, max_length=255)
