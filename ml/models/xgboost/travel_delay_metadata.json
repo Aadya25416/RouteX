@@ -1,0 +1,20 @@
+{
+  "model_name": "xgboost_mountain_speed_degradation",
+  "model_version": "1.0.0",
+  "metrics": {
+    "rmse": 0.0321,
+    "mae": 0.0247,
+    "r2_score": 0.974
+  },
+  "features": [
+    "road_class",
+    "base_speed_kmh",
+    "elevation_m",
+    "slope_deg",
+    "tri",
+    "rain_mm",
+    "is_monsoon"
+  ],
+  "trained_samples": 2400,
+  "test_samples": 600
+}
