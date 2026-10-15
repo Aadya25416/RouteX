@@ -1,0 +1,55 @@
+{
+  "model_name": "xgboost_ner_landslide_risk",
+  "model_version": "1.1.0",
+  "hyperparameters": {
+    "max_depth": 4,
+    "learning_rate": 0.06,
+    "subsample": 0.95,
+    "colsample_bytree": 0.85,
+    "reg_alpha": 0.05,
+    "reg_lambda": 0.8,
+    "n_estimators": 180
+  },
+  "cv_5fold_metrics": {
+    "mean_logloss": 0.0353,
+    "std_logloss": 0.0175,
+    "mean_brier_score": 0.0085,
+    "std_brier_score": 0.0055,
+    "mean_f1": 0.9886,
+    "std_f1": 0.0073,
+    "mean_auc_roc": 0.9991,
+    "std_auc_roc": 0.0011
+  },
+  "test_metrics": {
+    "auc_roc": 0.9978,
+    "precision": 1.0,
+    "recall": 0.9549,
+    "f1_score": 0.9769
+  },
+  "features": [
+    "elevation",
+    "slope_deg",
+    "aspect_deg",
+    "tri",
+    "precip",
+    "precip_3d",
+    "precip_7d",
+    "wind",
+    "month",
+    "is_monsoon"
+  ],
+  "feature_importances": {
+    "precip_7d": 0.3276,
+    "precip_3d": 0.2695,
+    "wind": 0.1379,
+    "is_monsoon": 0.0983,
+    "precip": 0.0974,
+    "month": 0.0226,
+    "slope_deg": 0.0155,
+    "aspect_deg": 0.0136,
+    "elevation": 0.0093,
+    "tri": 0.0083
+  },
+  "trained_samples": 1172,
+  "test_samples": 293
+}
