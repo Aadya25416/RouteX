@@ -30,6 +30,8 @@ class TestRouteXMLPipeline(unittest.TestCase):
         cls.unified_pipe.close()
 
     def test_terrain_processor_horn_slope(self):
+        if not os.path.exists(self.terrain_proc.west_dem) and not os.path.exists(self.terrain_proc.east_dem):
+            self.skipTest("DEM raster files not downloaded on this machine")
         guw = self.terrain_proc.get_terrain_features(26.185, 91.750)
         self.assertTrue(20.0 <= guw["elevation"] <= 250.0)
         self.assertTrue(guw["slope_deg"] < 15.0)
@@ -54,6 +56,8 @@ class TestRouteXMLPipeline(unittest.TestCase):
         self.assertTrue(any("SLOPE" in r or "RAIN" in r for r in hazard_res["reason_codes"]))
 
     def test_mountain_delay_predictor(self):
+        if not os.path.exists(self.delay_pred.terrain.west_dem) and not os.path.exists(self.delay_pred.terrain.east_dem):
+            self.skipTest("DEM raster files not downloaded on this machine")
         res_dry = self.delay_pred.predict_segment_speed(
             lat=26.185, lon=91.750, road_class=1, base_speed_kmh=60.0, rain_mm=0.0, month=1
         )
