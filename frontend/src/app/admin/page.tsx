@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import type { AdminIncidentItem } from "@/types/admin";
 import type { BackendInfoResponse, RoadFeatureCollection } from "@/types/roads";
 
+import { connectEventStream } from "@/lib/events";
+
 interface IncidentListResponse {
   total: number;
   items: Array<{
@@ -26,25 +28,9 @@ export default function AdminOverviewPage() {
   const [roadsData, setRoadsData] = useState<RoadFeatureCollection | null>(null);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   const [incidents, setIncidents] = useState(INITIAL_ADMIN_INCIDENTS);
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
 
-  useEffect(() => {
-    api.get<BackendInfoResponse>("/backend-api/info")
-      .then((data) => {
-        setIsBackendHealthy(true);
-        setBackendInfo(data);
-      })
-      .catch(() => {
-        setIsBackendHealthy(false);
-      });
-
-    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
-      .then((data) => {
-        if (data && data.features) {
-          setRoadsData(data);
-        }
-      })
-      .catch(() => {});
-
+  const fetchIncidents = () => {
     api.get<IncidentListResponse>("/api/v1/incidents?limit=5")
       .then((res) => {
         if (res.items && res.items.length > 0) {
@@ -65,6 +51,48 @@ export default function AdminOverviewPage() {
         }
       })
       .catch(() => {});
+  };
+
+  const fetchRoads = () => {
+    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+      .then((data) => {
+        if (data && data.features) {
+          setRoadsData(data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    api.get<BackendInfoResponse>("/backend-api/info")
+      .then((data) => {
+        setIsBackendHealthy(true);
+        setBackendInfo(data);
+      })
+      .catch(() => {
+        setIsBackendHealthy(false);
+      });
+
+    fetchRoads();
+    fetchIncidents();
+
+    // Subscribe to SSE for live road, incident, and corridor updates
+    const unsubscribe = connectEventStream({
+      onEvent: (event) => {
+        if (event.event_type === "road.status_changed") {
+          fetchRoads();
+        } else if (event.event_type.startsWith("incident.")) {
+          fetchIncidents();
+        }
+      },
+      onStatusChange: (status) => {
+        setIsLiveConnected(status === "connected");
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Compute road segments count strictly from real data or baseline
@@ -107,6 +135,15 @@ export default function AdminOverviewPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-xs ${
+              isLiveConnected
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-slate-50 border-slate-200 text-slate-600"
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              <span>{isLiveConnected ? "Real-Time Updates Active" : "Connecting..."}</span>
+            </span>
+
             <select
               aria-label="Filter overview timeframe"
               defaultValue="today"

@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 from backend.api.v1.auth import router as auth_router
 from backend.api.v1.deliveries import router as deliveries_router
+from backend.api.v1.events import router as events_router
 from backend.api.v1.evidence import router as evidence_router
 from backend.api.v1.incidents import router as incidents_router
 from backend.api.v1.ml import router as ml_router
@@ -29,4 +30,5 @@ api_v1_router.include_router(vehicles_router)
 api_v1_router.include_router(deliveries_router)
 api_v1_router.include_router(trips_router)
 api_v1_router.include_router(routes_router)
+api_v1_router.include_router(events_router)
 

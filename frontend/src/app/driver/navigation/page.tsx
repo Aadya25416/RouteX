@@ -8,6 +8,9 @@ import DriverLayout from "@/components/driver/DriverLayout";
 import { INITIAL_DRIVER_TRIP, GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
 import { getStatusColor } from "@/components/RoadMap";
 import { api, ApiError } from "@/lib/api";
+import { useGpsTracker } from "@/lib/useGpsTracker";
+import { connectEventStream } from "@/lib/events";
+import type { VehicleMarkerData } from "@/components/RoadMap";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
 
 interface BackendTripItem {
@@ -56,6 +59,70 @@ export default function ActiveNavigationPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [telemetryStatus, setTelemetryStatus] = useState<string | null>(null);
+  const [driverMarker, setDriverMarker] = useState<VehicleMarkerData | null>(null);
+  const [rerouteNotice, setRerouteNotice] = useState<string | null>(null);
+
+  const {
+    isTracking,
+    startTracking,
+    stopTracking,
+    lastFix,
+    trackingError,
+    lastSyncedAt,
+  } = useGpsTracker({
+    minIntervalMs: 5000,
+  });
+
+  // Keep marker updated with latest local GPS fix
+  useEffect(() => {
+    if (lastFix && activeBackendTrip?.vehicle_id) {
+      setDriverMarker({
+        id: activeBackendTrip.vehicle_id,
+        lngLat: [lastFix.longitude, lastFix.latitude],
+        label: activeBackendTrip.vehicle?.registration_number || "My Vehicle",
+        speedKmh: lastFix.speedKmh,
+        heading: lastFix.headingDeg,
+        isCurrentDriver: true,
+        isStale: false,
+        updatedAt: lastFix.timestamp,
+      });
+    }
+  }, [lastFix, activeBackendTrip]);
+
+  // Connect to SSE stream for live updates
+  useEffect(() => {
+    const unsubscribe = connectEventStream({
+      onEvent: (event) => {
+        if (event.event_type === "vehicle.location_updated") {
+          const payload = event.payload;
+          if (payload.vehicle_id === activeBackendTrip?.vehicle_id) {
+            setDriverMarker({
+              id: payload.vehicle_id,
+              lngLat: [payload.longitude, payload.latitude],
+              label: activeBackendTrip?.vehicle?.registration_number || "My Vehicle",
+              speedKmh: payload.speed_kmh,
+              heading: payload.heading_deg,
+              isCurrentDriver: true,
+              isStale: false,
+              updatedAt: payload.recorded_at,
+            });
+          }
+        } else if (event.event_type === "trip.rerouted") {
+          if (event.payload.trip_id === activeBackendTrip?.id) {
+            setRerouteNotice(event.payload.reason || "Trip route updated to avoid hazards.");
+          }
+        } else if (event.event_type === "road.status_changed") {
+          api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
+            .then(setRoadsData)
+            .catch(() => {});
+        }
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeBackendTrip?.vehicle_id, activeBackendTrip?.id]);
 
   useEffect(() => {
     api.get<BackendInfoResponse>("/backend-api/info")
@@ -69,7 +136,26 @@ export default function ActiveNavigationPage() {
     api.get<TripListResponse>("/api/v1/trips?limit=10")
       .then((res) => {
         const inTransit = res.items.find((t) => t.status === "IN_TRANSIT" || t.status === "PLANNED");
-        if (inTransit) setActiveBackendTrip(inTransit);
+        if (inTransit) {
+          setActiveBackendTrip(inTransit);
+          if (inTransit.vehicle_id) {
+            api.get<{ latitude: number; longitude: number; speed_kmh?: number; recorded_at: string }>(`/api/v1/vehicles/${inTransit.vehicle_id}/location`)
+              .then((loc) => {
+                if (loc) {
+                  setDriverMarker({
+                    id: inTransit.vehicle_id,
+                    lngLat: [loc.longitude, loc.latitude],
+                    label: inTransit.vehicle?.registration_number || "My Vehicle",
+                    speedKmh: loc.speed_kmh,
+                    isCurrentDriver: true,
+                    isStale: false,
+                    updatedAt: loc.recorded_at,
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -83,6 +169,7 @@ export default function ActiveNavigationPage() {
     setActionError(null);
     try {
       await api.post(`/api/v1/trips/${activeBackendTrip.id}/complete`);
+      stopTracking();
       router.push("/driver/trip-complete");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -91,26 +178,6 @@ export default function ActiveNavigationPage() {
         setActionError("Failed to complete trip. Please check connection.");
       }
       setIsCompleting(false);
-    }
-  };
-
-  const handleSendLocation = async () => {
-    if (!activeBackendTrip?.vehicle_id) return;
-    setTelemetryStatus("Sending GPS ping...");
-    try {
-      await api.post(`/api/v1/vehicles/${activeBackendTrip.vehicle_id}/location`, {
-        latitude: 26.9,
-        longitude: 92.2,
-        recorded_at: new Date().toISOString(),
-        speed_kmh: 42.5,
-        heading_deg: 35.0,
-        source: "mobile_gps",
-        trip_id: activeBackendTrip.id,
-      });
-      setTelemetryStatus("GPS position synced");
-      setTimeout(() => setTelemetryStatus(null), 3000);
-    } catch (err) {
-      setTelemetryStatus(err instanceof ApiError ? err.message : "GPS ping failed");
     }
   };
 
@@ -158,8 +225,9 @@ export default function ActiveNavigationPage() {
               routeCoordinates={GUWAHATI_TAWANG_CORRIDOR_COORDS}
               stopMarkers={stopMarkers}
               hazardMarker={hazardMarker}
+              vehicleMarkers={driverMarker ? [driverMarker] : []}
               onSelectRoad={setSelectedRoad}
-              customCenter={[92.2, 26.9]}
+              customCenter={driverMarker ? driverMarker.lngLat : [92.2, 26.9]}
               customZoom={8.2}
               className="w-full h-full relative"
             />
@@ -302,14 +370,37 @@ export default function ActiveNavigationPage() {
             {/* Action buttons at bottom of panel */}
             <div className="pt-4 mt-4 border-t border-[#E8EFE5] flex flex-col gap-2">
               {activeBackendTrip?.vehicle_id && (
-                <button
-                  type="button"
-                  onClick={handleSendLocation}
-                  className="w-full py-2 px-3 bg-[#EAF2E7] hover:bg-[#DDF4E8] text-[#12432A] border border-[#B7E4CD] rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <span>📡</span>
-                  <span>{telemetryStatus || "Send GPS Ping"}</span>
-                </button>
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isTracking) {
+                        stopTracking();
+                      } else if (activeBackendTrip?.vehicle_id) {
+                        startTracking(activeBackendTrip.vehicle_id, activeBackendTrip.id);
+                      }
+                    }}
+                    id="navigation-toggle-tracking-btn"
+                    className={`w-full py-2 px-3 border rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      isTracking
+                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300"
+                        : "bg-[#EAF2E7] hover:bg-[#DDF4E8] text-[#12432A] border-[#B7E4CD]"
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isTracking ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
+                    <span>{isTracking ? "Stop Live GPS Tracking" : "Start Live GPS Tracking"}</span>
+                  </button>
+                  {lastSyncedAt && (
+                    <span className="text-[10px] text-center text-[#71877D]">
+                      GPS Synced: {new Date(lastSyncedAt).toLocaleTimeString()}
+                    </span>
+                  )}
+                  {trackingError && (
+                    <span className="text-[10px] text-center text-rose-600 font-semibold">
+                      ⚠️ {trackingError}
+                    </span>
+                  )}
+                </div>
               )}
               <Link
                 href="/driver/report-incident"

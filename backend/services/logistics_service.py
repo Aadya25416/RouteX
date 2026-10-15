@@ -717,6 +717,25 @@ class LogisticsService:
         self.session.add(loc)
         await self.session.commit()
         await self.session.refresh(loc)
+
+        # 3. Publish vehicle.location_updated domain event
+        await self.publisher.publish_event(
+            event_type="vehicle.location_updated",
+            entity_id=str(vehicle_id),
+            payload={
+                "vehicle_id": str(vehicle_id),
+                "trip_id": str(active_trip_id) if active_trip_id else None,
+                "latitude": payload.latitude,
+                "longitude": payload.longitude,
+                "speed_kmh": payload.speed_kmh,
+                "heading_deg": payload.heading_deg,
+                "matched_segment_id": matched_seg_id,
+                "snapping_distance_m": snapping_dist,
+                "recorded_at": payload.recorded_at.isoformat(),
+                "source": payload.source,
+            },
+        )
+
         return loc
 
     async def record_vehicle_locations_batch(
@@ -809,6 +828,22 @@ class LogisticsService:
                         snapping_distance_m=dist_m,
                         recorded_at=item.recorded_at,
                         trip_id=item.trip_id or active_trip_id,
+                    )
+                    await self.publisher.publish_event(
+                        event_type="vehicle.location_updated",
+                        entity_id=str(vehicle_id),
+                        payload={
+                            "vehicle_id": str(vehicle_id),
+                            "trip_id": str(item.trip_id or active_trip_id) if (item.trip_id or active_trip_id) else None,
+                            "latitude": item.latitude,
+                            "longitude": item.longitude,
+                            "speed_kmh": item.speed_kmh,
+                            "heading_deg": item.heading_deg,
+                            "matched_segment_id": seg_id,
+                            "snapping_distance_m": dist_m,
+                            "recorded_at": item.recorded_at.isoformat(),
+                            "source": item.source,
+                        },
                     )
 
         return persisted_locs
@@ -1029,8 +1064,14 @@ class LogisticsService:
                 entity_id=str(trip.id),
                 payload={
                     "trip_id": str(trip.id),
-                    "new_route_id": str(new_route.id),
+                    "vehicle_id": str(trip.vehicle_id) if trip.vehicle_id else None,
+                    "driver_id": str(trip.driver_id) if trip.driver_id else None,
+                    "previous_route_id": str(prev_route_id) if prev_route_id else None,
+                    "new_route_id": str(new_route.id) if new_route and new_route.id else None,
                     "blocked_segments": blocked_segments_on_route,
+                    "estimated_distance_m": new_route.distance_m if new_route else None,
+                    "estimated_duration_s": new_route.eta_seconds if new_route else None,
+                    "reason": reroute_reason,
                 },
             )
 
