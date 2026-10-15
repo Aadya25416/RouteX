@@ -174,7 +174,7 @@ export default function RoadNetworkPage() {
           backendInfo={backendInfo}
           roadsData={roadsData}
           onSelectRoad={setSelectedRoad}
-          className="w-full h-full relative"
+          className="w-full h-full min-h-[620px] flex-1 relative"
         />
 
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
@@ -132,6 +132,7 @@ export default function RoadMap({
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const onSelectRoadRef = useRef(onSelectRoad);
   const onMapClickRef = useRef(onMapClick);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     onSelectRoadRef.current = onSelectRoad;
@@ -318,17 +319,42 @@ export default function RoadMap({
     const initialCenter: [number, number] = customCenter || [91.7362, 26.1445];
     const initialZoom = customZoom ?? 9;
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: OSM_STYLE,
-      center: initialCenter,
-      zoom: initialZoom,
-      attributionControl: {
-        compact: false,
-      },
-    });
+    console.log("[RoadMap MOUNT] container clientWidth/Height:", mapContainerRef.current.clientWidth, mapContainerRef.current.clientHeight);
+    console.log("[RoadMap MOUNT] container offsetWidth/Height:", mapContainerRef.current.offsetWidth, mapContainerRef.current.offsetHeight);
 
-    mapInstanceRef.current = map;
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: OSM_STYLE,
+        center: initialCenter,
+        zoom: initialZoom,
+        attributionControl: {
+          compact: false,
+        },
+      });
+
+      map.on("error", (e) => {
+        console.error("[RoadMap ERROR EVENT]", e.error?.message || e);
+      });
+
+      map.on("load", () => {
+        console.log("[RoadMap LOAD EVENT] map style loaded!");
+      });
+
+      map.on("sourcedata", (e) => {
+        if (e.sourceId === "osm") {
+          console.log("[RoadMap OSM SOURCEDATA] isSourceLoaded:", e.isSourceLoaded, "dataType:", e.dataType);
+        }
+      });
+
+      mapInstanceRef.current = map;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "WebGL context initialization failed.";
+      console.error("Failed to initialize MapLibre GL engine:", msg);
+      setInitError(msg);
+      return;
+    }
 
     // Add navigation controls (zoom in/out, compass) if not hidden
     if (!hideNavControls) {
@@ -554,15 +580,50 @@ export default function RoadMap({
     }
   }, [stopMarkers, hazardMarker]);
 
+  if (initError) {
+    return (
+      <div
+        className={className ? `relative min-h-[500px] flex items-center justify-center bg-[#FAFBF7] ${className}` : "relative w-full h-full min-h-[500px] flex items-center justify-center bg-[#FAFBF7]"}
+        style={{ minHeight: "500px", width: "100%", height: "100%" }}
+      >
+        <div className="max-w-md p-6 bg-white border border-[#DCE5D8] rounded-2xl shadow-xl text-center">
+          <div className="w-10 h-10 rounded-full bg-[#FFF0E6] text-[#F97316] flex items-center justify-center text-lg font-bold mx-auto mb-3">
+            ⚠️
+          </div>
+          <h3 className="text-sm font-bold text-[#193B32] mb-1">Map Engine Initialization Notice</h3>
+          <p className="text-xs text-[#71877D] mb-4 leading-relaxed">
+            {initError}. Please verify hardware acceleration or WebGL support in your browser settings.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-1.5 text-xs font-semibold rounded-full bg-[#16A779] text-white hover:bg-[#128a63] cursor-pointer"
+          >
+            Retry Loading Map
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={className ? `relative min-h-[500px] ${className}` : "relative w-full h-full min-h-[500px]"}
-      style={{ minHeight: "500px", width: "100%", height: "100%" }}
+      className={className ? `relative min-h-[500px] flex-1 w-full h-full ${className}` : "relative w-full h-full min-h-[500px] flex-1"}
+      style={{ minHeight: "500px", width: "100%", height: "100%", position: "relative" }}
     >
       <div
         ref={mapContainerRef}
-        className="w-full h-full absolute inset-0"
-        style={{ minHeight: "100%", minWidth: "100%", width: "100%", height: "100%" }}
+        className="w-full h-full"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          minHeight: "100%",
+        }}
       />
     </div>
   );
