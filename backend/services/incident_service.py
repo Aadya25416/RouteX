@@ -177,6 +177,23 @@ class IncidentService:
                 "candidate_road_ids": [c[0].id for c in candidates],
             },
         )
+        # 10. Generate alert for critical/high reported incident
+        if severity and severity.upper() in ("CRITICAL", "HIGH"):
+            try:
+                from backend.services.alert_service import AlertService
+                alert_service = AlertService(session=self.session, event_publisher=self.publisher)
+                await alert_service.create_alert(
+                    event_type="incident.created",
+                    severity=severity.lower(),
+                    message=f"High-priority incident ({incident_type}) reported: {description or 'Potential corridor hazard'}.",
+                    recipient_role="dispatcher",
+                    entity_type="incident",
+                    entity_id=str(incident.id),
+                    details={"incident_id": str(incident.id), "type": incident_type, "severity": severity},
+                    dedup_key=f"alert:incident_created:{incident.id}",
+                )
+            except Exception as alert_exc:
+                logger.warning(f"Failed to create alert for new critical incident {incident.id}: {alert_exc}")
 
         return incident_reloaded, False
 
@@ -383,6 +400,35 @@ class IncidentService:
                 await logistics_service.check_and_reroute_disrupted_trips(blocked_seg_ids, actor_id=reviewer_id)
             except Exception as exc:
                 logger.error(f"Error evaluating disrupted trips during incident confirmation: {exc}")
+
+        # Generate alert for confirmed critical incident or road blockage
+        if blocked_seg_ids or (incident.severity and incident.severity.upper() in ("CRITICAL", "HIGH")):
+            try:
+                from backend.services.alert_service import AlertService
+                alert_service = AlertService(session=self.session, event_publisher=self.publisher)
+                severity_val = "critical" if blocked_seg_ids or incident.severity == "CRITICAL" else "high"
+                msg = (
+                    f"Incident #{str(incident.id)[:8]} confirmed. Road segment(s) {', '.join(blocked_seg_ids)} are BLOCKED."
+                    if blocked_seg_ids
+                    else f"Incident #{str(incident.id)[:8]} ({incident.incident_type}) confirmed with severity {incident.severity}."
+                )
+                await alert_service.create_alert(
+                    event_type="road.blockage" if blocked_seg_ids else "incident.confirmed",
+                    severity=severity_val,
+                    message=msg,
+                    recipient_role="dispatcher",
+                    entity_type="incident",
+                    entity_id=str(incident.id),
+                    details={
+                        "incident_id": str(incident.id),
+                        "blocked_segments": blocked_seg_ids,
+                        "severity": incident.severity,
+                        "status": incident.status,
+                    },
+                    dedup_key=f"alert:incident_confirmed:{incident.id}",
+                )
+            except Exception as alert_exc:
+                logger.warning(f"Failed to create alert for confirmed incident {incident.id}: {alert_exc}")
 
         return await self.get_incident_by_id(incident_id)
 

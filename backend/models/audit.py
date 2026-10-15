@@ -29,6 +29,16 @@ class Alert(Base, UUIDPrimaryKeyMixin):
     severity: Mapped[str] = mapped_column(String(20), default="info", nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    acknowledged_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    entity_type: Mapped[str | None] = mapped_column(String(50), index=True, nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    dedup_key: Mapped[str | None] = mapped_column(String(200), index=True, unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
 

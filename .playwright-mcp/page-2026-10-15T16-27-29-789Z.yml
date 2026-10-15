@@ -1,0 +1,549 @@
+- generic [active] [ref=f1e1]:
+  - button "Open Next.js Dev Tools" [ref=f1e10] [cursor=pointer]
+  - alert [ref=f1e14]: Overview
+  - generic [ref=f1e153]:
+    - complementary "System Admin Navigation" [ref=f1e154]:
+      - generic [ref=f1e155]:
+        - link "RouteX System Administration" [ref=f1e156] [cursor=pointer]:
+          - /url: /admin
+          - generic [ref=f1e157]: Route
+          - generic [ref=f1e158]: X
+          - generic [ref=f1e159]: Admin
+        - navigation "Main system menu" [ref=f1e160]:
+          - link "Overview" [ref=f1e161] [cursor=pointer]:
+            - /url: /admin
+          - link "Live Map" [ref=f1e168] [cursor=pointer]:
+            - /url: /admin/map
+          - link "Route Planning" [ref=f1e172] [cursor=pointer]:
+            - /url: /admin/route-planning
+          - link "Incidents" [ref=f1e178] [cursor=pointer]:
+            - /url: /admin/incidents
+          - link "Field Reports" [ref=f1e182] [cursor=pointer]:
+            - /url: /admin/field-reports
+          - link "Users & Roles" [ref=f1e187] [cursor=pointer]:
+            - /url: /admin/users
+          - link "Deliveries" [ref=f1e194] [cursor=pointer]:
+            - /url: /admin/deliveries
+          - link "Analytics & Reports" [ref=f1e201] [cursor=pointer]:
+            - /url: /admin/analytics
+          - link "Data Sources" [ref=f1e204] [cursor=pointer]:
+            - /url: /admin/data-sources
+          - link "System Settings" [ref=f1e210] [cursor=pointer]:
+            - /url: /admin/settings
+      - generic [ref=f1e215]:
+        - link "Road Map (Phase 1)" [ref=f1e216] [cursor=pointer]:
+          - /url: /map
+        - link "Public Home" [ref=f1e221] [cursor=pointer]:
+          - /url: /home
+    - generic [ref=f1e226]:
+      - banner [ref=f1e227]:
+        - textbox "Search corridor assets" [ref=f1e229]:
+          - /placeholder: Search location, road segment or incident...
+        - generic [ref=f1e230]:
+          - button "System Notifications" [ref=f1e232] [cursor=pointer]
+          - button "Admin profile menu" [ref=f1e238] [cursor=pointer]:
+            - generic [ref=f1e239]: A
+            - generic [ref=f1e240]:
+              - generic [ref=f1e241]: RouteX Administrator
+              - generic [ref=f1e242]: System Admin
+      - main [ref=f1e245]:
+        - generic [ref=f1e246]:
+          - generic [ref=f1e247]:
+            - generic [ref=f1e248]:
+              - heading "Overview" [level=1] [ref=f1e249]
+              - paragraph [ref=f1e250]: Guwahati-Tawang · Live operational intelligence
+            - generic [ref=f1e251]:
+              - generic [ref=f1e252]: Real-Time Updates Active
+              - button "🔄 Refresh" [ref=f1e255]:
+                - generic [ref=f1e256]: 🔄
+                - generic [ref=f1e257]: Refresh
+              - link "View Live Map" [ref=f1e258] [cursor=pointer]:
+                - /url: /admin/map
+                - generic [aria-hidden] [ref=f1e260]: →
+          - generic [ref=f1e261]:
+            - generic [ref=f1e262]:
+              - generic [ref=f1e263]:
+                - generic [ref=f1e264]: Active Trips
+                - generic [ref=f1e265]: 🚚
+              - generic [ref=f1e266]: "189"
+              - generic [ref=f1e267]: 145 recent reroutes
+            - generic [ref=f1e269]:
+              - generic [ref=f1e270]:
+                - generic [ref=f1e271]: Fleet in Transit
+                - generic [ref=f1e272]: 📡
+              - generic [ref=f1e273]: 0 / 759
+              - generic [ref=f1e274]: 0 vehicles GPS live
+            - generic [ref=f1e275]:
+              - generic [ref=f1e276]:
+                - generic [ref=f1e277]: Active Hazards
+                - generic [ref=f1e278]: ⚠️
+              - generic [ref=f1e279]: "943"
+              - generic [ref=f1e280]: 212 critical severity
+            - generic [ref=f1e282]:
+              - generic [ref=f1e283]:
+                - generic [ref=f1e284]: Consignments
+                - generic [ref=f1e285]: 📦
+              - generic [ref=f1e286]: "0"
+              - generic [ref=f1e287]: 155 high-priority
+          - generic [ref=f1e288]:
+            - generic [ref=f1e289]:
+              - generic [ref=f1e290]:
+                - generic [ref=f1e291]: Total Segments
+                - generic [ref=f1e292]: 🛣️
+              - generic [ref=f1e293]: "1118"
+              - generic [ref=f1e294]: Database graph
+            - generic [ref=f1e295]:
+              - generic [ref=f1e296]: Open
+              - generic [ref=f1e299]: "0"
+              - generic [ref=f1e300]: 0% passable
+            - generic [ref=f1e301]:
+              - generic [ref=f1e302]: At Risk
+              - generic [ref=f1e305]: "0"
+              - generic [ref=f1e306]: 0% caution
+            - generic [ref=f1e307]:
+              - generic [ref=f1e308]: Restricted
+              - generic [ref=f1e311]: "0"
+              - generic [ref=f1e312]: Weight/access limits
+            - generic [ref=f1e313]:
+              - generic [ref=f1e314]: Blocked
+              - generic [ref=f1e317]: "1"
+              - generic [ref=f1e318]: Hard closure
+            - generic [ref=f1e319]:
+              - generic [ref=f1e320]: Unknown
+              - generic [ref=f1e323]: "1117"
+              - generic [ref=f1e324]: Never treated as safe
+          - generic [ref=f1e325]:
+            - generic [ref=f1e326]:
+              - generic [ref=f1e327]:
+                - generic [ref=f1e328]:
+                  - heading "Road Status Distribution" [level=2] [ref=f1e329]
+                  - generic [ref=f1e330]: Live Database Graph
+                - generic [ref=f1e331]:
+                  - 'generic "Open: 0%"'
+                  - 'generic "At Risk: 0%"'
+                  - 'generic "Restricted: 0%"'
+                  - 'generic "Blocked: 0%"'
+                  - 'generic "Unknown: 100%" [ref=f1e332]'
+                - generic [ref=f1e333]:
+                  - generic [ref=f1e334]:
+                    - generic [ref=f1e335]: Open
+                    - generic [ref=f1e338]: 0% (0 segments)
+                  - generic [ref=f1e339]:
+                    - generic [ref=f1e340]: At Risk
+                    - generic [ref=f1e343]: 0% (0 segments)
+                  - generic [ref=f1e344]:
+                    - generic [ref=f1e345]: Restricted
+                    - generic [ref=f1e348]: 0% (0 segments)
+                  - generic [ref=f1e349]:
+                    - generic [ref=f1e350]: Blocked
+                    - generic [ref=f1e353]: 0% (1 segments)
+                  - generic [ref=f1e354]:
+                    - generic [ref=f1e355]: Unknown
+                    - generic [ref=f1e358]: 100% (1117 segments)
+              - generic [ref=f1e359]: "⚠️ Policy rule: UNKNOWN segments require operational verification before routing heavy freight."
+            - generic [ref=f1e361]:
+              - generic [ref=f1e362]:
+                - generic [ref=f1e363]:
+                  - generic [ref=f1e364]:
+                    - heading "Actionable Alerts" [level=2] [ref=f1e365]
+                    - generic [ref=f1e366]: 326 unacknowledged
+                  - generic [ref=f1e367]:
+                    - combobox "Filter alerts acknowledgement status" [ref=f1e368]:
+                      - option "Pending" [selected]
+                      - option "All"
+                      - option "Acknowledged"
+                    - combobox "Filter alerts severity" [ref=f1e369]:
+                      - option "All Severities" [selected]
+                      - option "Critical"
+                      - option "High"
+                      - option "Warning"
+                      - option "Info"
+                    - button "🔄" [ref=f1e370]
+                - generic [ref=f1e371]:
+                  - generic [ref=f1e372]:
+                    - generic [ref=f1e373]:
+                      - generic [ref=f1e374]:
+                        - generic [ref=f1e375]: CRITICAL
+                        - generic [ref=f1e377]: "incident #050b62e3"
+                        - generic [ref=f1e378]: 09:26 PM
+                      - paragraph [ref=f1e379]: "High-priority incident (LANDSLIDE) reported: Incident created during simulated Redis outage."
+                    - button "Acknowledge" [ref=f1e380]
+                  - generic [ref=f1e381]:
+                    - generic [ref=f1e382]:
+                      - generic [ref=f1e383]:
+                        - generic [ref=f1e384]: CRITICAL
+                        - generic [ref=f1e386]: "incident #8a14658e"
+                        - generic [ref=f1e387]: 09:26 PM
+                      - paragraph [ref=f1e388]: "Incident #8a14658e confirmed. Road segment(s) edge_566699656_6975529291_0 are BLOCKED."
+                    - button "Acknowledge" [ref=f1e389]
+                  - generic [ref=f1e390]:
+                    - generic [ref=f1e391]:
+                      - generic [ref=f1e392]:
+                        - generic [ref=f1e393]: CRITICAL
+                        - generic [ref=f1e395]: "incident #8a14658e"
+                        - generic [ref=f1e396]: 09:26 PM
+                      - paragraph [ref=f1e397]: "High-priority incident (LANDSLIDE) reported: Massive landslide."
+                    - button "Acknowledge" [ref=f1e398]
+                  - generic [ref=f1e399]:
+                    - generic [ref=f1e400]:
+                      - generic [ref=f1e401]:
+                        - generic [ref=f1e402]: HIGH
+                        - generic [ref=f1e403]: "incident #19534bff"
+                        - generic [ref=f1e404]: 09:26 PM
+                      - paragraph [ref=f1e405]: "High-priority incident (FLOOD) reported: Flash flood covering road."
+                    - button "Acknowledge" [ref=f1e406]
+                  - generic [ref=f1e407]:
+                    - generic [ref=f1e408]:
+                      - generic [ref=f1e409]:
+                        - generic [ref=f1e410]: CRITICAL
+                        - generic [ref=f1e412]: "incident #4b2c97e0"
+                        - generic [ref=f1e413]: 09:26 PM
+                      - paragraph [ref=f1e414]: "Incident #4b2c97e0 confirmed. Road segment(s) edge_566699656_9620238587_0, edge_566699656_6975529291_0 are BLOCKED."
+                    - button "Acknowledge" [ref=f1e415]
+                  - generic [ref=f1e416]:
+                    - generic [ref=f1e417]:
+                      - generic [ref=f1e418]:
+                        - generic [ref=f1e419]: WARNING
+                        - generic [ref=f1e420]: "trip #8194d4f5"
+                        - generic [ref=f1e421]: 09:26 PM
+                      - paragraph [ref=f1e422]: "Trip #8194d4f5 rerouted: avoided 1 blocked segments."
+                    - button "Acknowledge" [ref=f1e423]
+                  - generic [ref=f1e424]:
+                    - generic [ref=f1e425]:
+                      - generic [ref=f1e426]:
+                        - generic [ref=f1e427]: HIGH
+                        - generic [ref=f1e428]: "trip #8194d4f5"
+                        - generic [ref=f1e429]: 09:26 PM
+                      - paragraph [ref=f1e430]: "Active trip #8194d4f5 is affected by road disruption on segment(s): edge_566699656_9620238587_0."
+                    - button "Acknowledge" [ref=f1e431]
+                  - generic [ref=f1e432]:
+                    - generic [ref=f1e433]:
+                      - generic [ref=f1e434]:
+                        - generic [ref=f1e435]: WARNING
+                        - generic [ref=f1e436]: "trip #b4a6fea5"
+                        - generic [ref=f1e437]: 09:26 PM
+                      - paragraph [ref=f1e438]: "Trip #b4a6fea5 rerouted: avoided 1 blocked segments."
+                    - button "Acknowledge" [ref=f1e439]
+                  - generic [ref=f1e440]:
+                    - generic [ref=f1e441]:
+                      - generic [ref=f1e442]:
+                        - generic [ref=f1e443]: HIGH
+                        - generic [ref=f1e444]: "trip #b4a6fea5"
+                        - generic [ref=f1e445]: 09:26 PM
+                      - paragraph [ref=f1e446]: "Active trip #b4a6fea5 is affected by road disruption on segment(s): edge_566699656_6975529291_0."
+                    - button "Acknowledge" [ref=f1e447]
+                  - generic [ref=f1e448]:
+                    - generic [ref=f1e449]:
+                      - generic [ref=f1e450]:
+                        - generic [ref=f1e451]: WARNING
+                        - generic [ref=f1e452]: "trip #61f1c695"
+                        - generic [ref=f1e453]: 09:26 PM
+                      - paragraph [ref=f1e454]: "Trip #61f1c695 rerouted: avoided 1 blocked segments."
+                    - button "Acknowledge" [ref=f1e455]
+                  - generic [ref=f1e456]:
+                    - generic [ref=f1e457]:
+                      - generic [ref=f1e458]:
+                        - generic [ref=f1e459]: HIGH
+                        - generic [ref=f1e460]: "trip #61f1c695"
+                        - generic [ref=f1e461]: 09:26 PM
+                      - paragraph [ref=f1e462]: "Active trip #61f1c695 is affected by road disruption on segment(s): edge_566699656_9620238587_0."
+                    - button "Acknowledge" [ref=f1e463]
+                  - generic [ref=f1e464]:
+                    - generic [ref=f1e465]:
+                      - generic [ref=f1e466]:
+                        - generic [ref=f1e467]: HIGH
+                        - generic [ref=f1e468]: "incident #4b2c97e0"
+                        - generic [ref=f1e469]: 09:26 PM
+                      - paragraph [ref=f1e470]: "High-priority incident (FLOOD) reported: Potential corridor hazard."
+                    - button "Acknowledge" [ref=f1e471]
+                  - generic [ref=f1e472]:
+                    - generic [ref=f1e473]:
+                      - generic [ref=f1e474]:
+                        - generic [ref=f1e475]: HIGH
+                        - generic [ref=f1e476]: "incident #048555e9"
+                        - generic [ref=f1e477]: 09:26 PM
+                      - paragraph [ref=f1e478]: "High-priority incident (ROAD_DAMAGE) reported: Potholes on road near Guwahati."
+                    - button "Acknowledge" [ref=f1e479]
+                  - generic [ref=f1e480]:
+                    - generic [ref=f1e481]:
+                      - generic [ref=f1e482]:
+                        - generic [ref=f1e483]: HIGH
+                        - generic [ref=f1e484]: "incident #e9e15d75"
+                        - generic [ref=f1e485]: 09:26 PM
+                      - paragraph [ref=f1e486]: "High-priority incident (LANDSLIDE) reported: Potential corridor hazard."
+                    - button "Acknowledge" [ref=f1e487]
+                  - generic [ref=f1e488]:
+                    - generic [ref=f1e489]:
+                      - generic [ref=f1e490]:
+                        - generic [ref=f1e491]: CRITICAL
+                        - generic [ref=f1e493]: "incident #1cefb865"
+                        - generic [ref=f1e494]: 09:26 PM
+                      - paragraph [ref=f1e495]: "High-priority incident (BRIDGE_DAMAGE) reported: Potential corridor hazard."
+                    - button "Acknowledge" [ref=f1e496]
+                  - generic [ref=f1e497]:
+                    - generic [ref=f1e498]:
+                      - generic [ref=f1e499]:
+                        - generic [ref=f1e500]: HIGH
+                        - generic [ref=f1e501]: "incident #982ced4b"
+                        - generic [ref=f1e502]: 09:26 PM
+                      - paragraph [ref=f1e503]: "High-priority incident (LANDSLIDE) reported: Severe debris block after monsoon rainfall."
+                    - button "Acknowledge" [ref=f1e504]
+                  - generic [ref=f1e505]:
+                    - generic [ref=f1e506]:
+                      - generic [ref=f1e507]:
+                        - generic [ref=f1e508]: INFO
+                        - generic [ref=f1e509]: "trip #b4a6fea5"
+                        - generic [ref=f1e510]: 09:26 PM
+                      - paragraph [ref=f1e511]: "Trip #b4a6fea5 rerouted: route recalculated successfully."
+                    - button "Acknowledge" [ref=f1e512]
+                  - generic [ref=f1e513]:
+                    - generic [ref=f1e514]:
+                      - generic [ref=f1e515]:
+                        - generic [ref=f1e516]: CRITICAL
+                        - generic [ref=f1e518]: "incident #e3af09c9"
+                        - generic [ref=f1e519]: 09:26 PM
+                      - paragraph [ref=f1e520]: "Incident #e3af09c9 confirmed. Road segment(s) edge_566699656_6975529291_0 are BLOCKED."
+                    - button "Acknowledge" [ref=f1e521]
+                  - generic [ref=f1e522]:
+                    - generic [ref=f1e523]:
+                      - generic [ref=f1e524]:
+                        - generic [ref=f1e525]: WARNING
+                        - generic [ref=f1e526]: "trip #8194d4f5"
+                        - generic [ref=f1e527]: 09:26 PM
+                      - paragraph [ref=f1e528]: "Trip #8194d4f5 rerouted: avoided 1 blocked segments."
+                    - button "Acknowledge" [ref=f1e529]
+                  - generic [ref=f1e530]:
+                    - generic [ref=f1e531]:
+                      - generic [ref=f1e532]:
+                        - generic [ref=f1e533]: HIGH
+                        - generic [ref=f1e534]: "trip #8194d4f5"
+                        - generic [ref=f1e535]: 09:26 PM
+                      - paragraph [ref=f1e536]: "Active trip #8194d4f5 is affected by road disruption on segment(s): edge_566699656_6975529291_0."
+                    - button "Acknowledge" [ref=f1e537]
+                  - generic [ref=f1e538]:
+                    - generic [ref=f1e539]:
+                      - generic [ref=f1e540]:
+                        - generic [ref=f1e541]: WARNING
+                        - generic [ref=f1e542]: "trip #61f1c695"
+                        - generic [ref=f1e543]: 09:26 PM
+                      - paragraph [ref=f1e544]: "Trip #61f1c695 rerouted: avoided 1 blocked segments."
+                    - button "Acknowledge" [ref=f1e545]
+                  - generic [ref=f1e546]:
+                    - generic [ref=f1e547]:
+                      - generic [ref=f1e548]:
+                        - generic [ref=f1e549]: HIGH
+                        - generic [ref=f1e550]: "trip #61f1c695"
+                        - generic [ref=f1e551]: 09:26 PM
+                      - paragraph [ref=f1e552]: "Active trip #61f1c695 is affected by road disruption on segment(s): edge_566699656_6975529291_0."
+                    - button "Acknowledge" [ref=f1e553]
+                  - generic [ref=f1e554]:
+                    - generic [ref=f1e555]:
+                      - generic [ref=f1e556]:
+                        - generic [ref=f1e557]: CRITICAL
+                        - generic [ref=f1e559]: "incident #e3af09c9"
+                        - generic [ref=f1e560]: 09:26 PM
+                      - paragraph [ref=f1e561]: "High-priority incident (LANDSLIDE) reported: Massive landslide blocking main route."
+                    - button "Acknowledge" [ref=f1e562]
+                  - generic [ref=f1e563]:
+                    - generic [ref=f1e564]:
+                      - generic [ref=f1e565]:
+                        - generic [ref=f1e566]: HIGH
+                        - generic [ref=f1e567]: "incident #f3580121"
+                        - generic [ref=f1e568]: 09:26 PM
+                      - paragraph [ref=f1e569]: "High-priority incident (LANDSLIDE) reported: Potential corridor hazard."
+                    - button "Acknowledge" [ref=f1e570]
+                  - generic [ref=f1e571]:
+                    - generic [ref=f1e572]:
+                      - generic [ref=f1e573]:
+                        - generic [ref=f1e574]: WARNING
+                        - generic [ref=f1e575]: 09:26 PM
+                      - paragraph [ref=f1e576]: Inspection alert for assigned driver
+                    - button "Acknowledge" [ref=f1e577]
+                  - generic [ref=f1e578]:
+                    - generic [ref=f1e579]:
+                      - generic [ref=f1e580]:
+                        - generic [ref=f1e581]: HIGH
+                        - generic [ref=f1e582]: 09:26 PM
+                      - paragraph [ref=f1e583]: Corridor hazard for dispatchers
+                    - button "Acknowledge" [ref=f1e584]
+                  - generic [ref=f1e585]:
+                    - generic [ref=f1e586]:
+                      - generic [ref=f1e587]:
+                        - generic [ref=f1e588]: INFO
+                        - generic [ref=f1e589]: "trip #8194d4f5"
+                        - generic [ref=f1e590]: 09:26 PM
+                      - paragraph [ref=f1e591]: "Trip #8194d4f5 rerouted: route recalculated successfully."
+                    - button "Acknowledge" [ref=f1e592]
+                  - generic [ref=f1e593]:
+                    - generic [ref=f1e594]:
+                      - generic [ref=f1e595]:
+                        - generic [ref=f1e596]: CRITICAL
+                        - generic [ref=f1e598]: "incident #d194b5b6"
+                        - generic [ref=f1e599]: 09:26 PM
+                      - paragraph [ref=f1e600]: "Incident #d194b5b6 confirmed. Road segment(s) edge_9620238587_566699656_0, edge_9620238590_9620238587_0, edge_4890704136_9620238587_0, edge_6975529291_566699656_0, edge_9620238587_9620238590_0, edge_566699656_566699666_0, edge_566699656_9620238587_0, edge_566699666_566699656_0, edge_9620238587_4890704136_0, edge_566699656_6975529291_0 are BLOCKED."
+                    - button "Acknowledge" [ref=f1e601]
+                  - generic [ref=f1e602]:
+                    - generic [ref=f1e603]:
+                      - generic [ref=f1e604]:
+                        - generic [ref=f1e605]: CRITICAL
+                        - generic [ref=f1e607]: "trip #9db37425"
+                        - generic [ref=f1e608]: 09:26 PM
+                      - paragraph [ref=f1e609]: "CRITICAL: Trip #9db37425 has no safe alternate route available! Immediate dispatcher intervention required."
+                    - button "Acknowledge" [ref=f1e610]
+                  - generic [ref=f1e611]:
+                    - generic [ref=f1e612]:
+                      - generic [ref=f1e613]:
+                        - generic [ref=f1e614]: HIGH
+                        - generic [ref=f1e615]: "trip #9db37425"
+                        - generic [ref=f1e616]: 09:26 PM
+                      - paragraph [ref=f1e617]: "Active trip #9db37425 is affected by road disruption on segment(s): edge_566699656_566699666_0."
+                    - button "Acknowledge" [ref=f1e618]
+              - generic [ref=f1e619]:
+                - generic [ref=f1e620]: Corridor alerts stream directly via Redis Streams SSE
+                - button "Refresh Feed" [ref=f1e621]
+          - generic [ref=f1e622]:
+            - generic [ref=f1e623]:
+              - generic [ref=f1e624]:
+                - generic [ref=f1e625]:
+                  - heading "Recent Incident Reports" [level=2] [ref=f1e626]
+                  - link "View All Incidents →" [ref=f1e627] [cursor=pointer]:
+                    - /url: /admin/incidents
+                - generic [ref=f1e628]:
+                  - generic [ref=f1e629]:
+                    - generic [ref=f1e630]:
+                      - generic [ref=f1e631]: ⚠️
+                      - generic [ref=f1e632]:
+                        - generic [ref=f1e633]:
+                          - generic [ref=f1e634]: Corridor Segment
+                          - generic [ref=f1e635]: Unverified
+                        - paragraph [ref=f1e636]: Incident created during simulated Redis outage
+                    - generic [ref=f1e637]: 09:26 PM
+                  - generic [ref=f1e638]:
+                    - generic [ref=f1e639]:
+                      - generic [ref=f1e640]: 🛠️
+                      - generic [ref=f1e641]:
+                        - generic [ref=f1e642]:
+                          - generic [ref=f1e643]: Corridor Segment
+                          - generic [ref=f1e644]: REJECTED
+                        - paragraph
+                    - generic [ref=f1e645]: 09:26 PM
+                  - generic [ref=f1e646]:
+                    - generic [ref=f1e647]:
+                      - generic [ref=f1e648]: 🛠️
+                      - generic [ref=f1e649]:
+                        - generic [ref=f1e650]:
+                          - generic [ref=f1e651]: Corridor Segment
+                          - generic [ref=f1e652]: RESOLVED
+                        - paragraph [ref=f1e653]: Standing water on road
+                    - generic [ref=f1e654]: 09:26 PM
+                  - generic [ref=f1e655]:
+                    - generic [ref=f1e656]:
+                      - generic [ref=f1e657]: ⚠️
+                      - generic [ref=f1e658]:
+                        - generic [ref=f1e659]:
+                          - generic [ref=f1e660]: Corridor Segment
+                          - generic [ref=f1e661]: RESOLVED
+                        - paragraph [ref=f1e662]: Massive landslide
+                    - generic [ref=f1e663]: 09:26 PM
+              - generic [ref=f1e664]:
+                - generic [ref=f1e665]: Active incident tracking on Guwahati–Tawang corridor
+                - link "Inspect Field Reports" [ref=f1e666] [cursor=pointer]:
+                  - /url: /admin/field-reports
+            - generic [ref=f1e667]:
+              - generic [ref=f1e668]:
+                - generic [ref=f1e669]:
+                  - heading "System Telemetry" [level=2] [ref=f1e670]
+                  - generic [ref=f1e671]: "FastAPI Engine: v0.1.0"
+                - generic [ref=f1e672]:
+                  - generic [ref=f1e675]:
+                    - generic [ref=f1e676]: API Engine
+                    - text: Operational (Port 8000)
+                  - generic [ref=f1e679]:
+                    - generic [ref=f1e680]: PostGIS Database
+                    - text: Connected (Spatial)
+                  - generic [ref=f1e683]:
+                    - generic [ref=f1e684]: Redis SSE Stream
+                    - text: Streaming (Active)
+                  - generic [ref=f1e687]:
+                    - generic [ref=f1e688]: Alerts Pipeline
+                    - generic [ref=f1e689]: 334 events past 24h
+              - generic [ref=f1e690]: Corridor operational intelligence refreshed automatically via Redis event bus.
+      - contentinfo "Site Footer" [ref=f1e691]:
+        - generic [ref=f1e692]:
+          - generic [ref=f1e693]:
+            - generic [ref=f1e694]:
+              - link "RouteX Home" [ref=f1e695] [cursor=pointer]:
+                - /url: /home
+                - generic [ref=f1e696]: Route
+                - generic [ref=f1e697]: X
+                - generic [ref=f1e698]: Logistics
+              - paragraph [ref=f1e699]: Safer routes and resilient road network intelligence for the Guwahati–Tawang corridor and Northeast India.
+              - generic [ref=f1e700]:
+                - generic [ref=f1e701]: 🌐
+                - generic [ref=f1e702]: RouteX Intelligent Network
+            - generic [ref=f1e703]:
+              - heading "Capabilities" [level=4] [ref=f1e704]
+              - list [ref=f1e705]:
+                - listitem [ref=f1e706]:
+                  - link "Road Network Map" [ref=f1e707] [cursor=pointer]:
+                    - /url: /map
+                - listitem [ref=f1e708]:
+                  - link "Route Planning Engine" [ref=f1e709] [cursor=pointer]:
+                    - /url: /admin/route-planning
+                - listitem [ref=f1e710]:
+                  - link "Driver Navigation" [ref=f1e711] [cursor=pointer]:
+                    - /url: /driver/navigation
+                - listitem [ref=f1e712]:
+                  - link "Hazard & Disruption Log" [ref=f1e713] [cursor=pointer]:
+                    - /url: /admin/incidents
+            - generic [ref=f1e714]:
+              - heading "Portals" [level=4] [ref=f1e715]
+              - list [ref=f1e716]:
+                - listitem [ref=f1e717]:
+                  - link "Driver Dashboard" [ref=f1e718] [cursor=pointer]:
+                    - /url: /driver
+                - listitem [ref=f1e719]:
+                  - link "System Admin Console" [ref=f1e720] [cursor=pointer]:
+                    - /url: /admin
+                - listitem [ref=f1e721]:
+                  - link "Staff Login / Register" [ref=f1e722] [cursor=pointer]:
+                    - /url: /login
+                - listitem [ref=f1e723]:
+                  - link "Corridor Home" [ref=f1e724] [cursor=pointer]:
+                    - /url: /home
+            - generic [ref=f1e725]:
+              - heading "Corridor Info" [level=4] [ref=f1e726]
+              - list [ref=f1e727]:
+                - listitem [ref=f1e728]:
+                  - link "Corridor Overview" [ref=f1e729] [cursor=pointer]:
+                    - /url: /home#overview
+                - listitem [ref=f1e730]:
+                  - link "How It Works" [ref=f1e731] [cursor=pointer]:
+                    - /url: /home#how-it-works
+                - listitem [ref=f1e732]:
+                  - link "Platform Features" [ref=f1e733] [cursor=pointer]:
+                    - /url: /home#features
+                - listitem [ref=f1e734]:
+                  - link "About RouteX" [ref=f1e735] [cursor=pointer]:
+                    - /url: /home#about
+            - generic [ref=f1e736]:
+              - heading "Regional Ops" [level=4] [ref=f1e737]
+              - list [ref=f1e738]:
+                - listitem [ref=f1e739]:
+                  - generic [aria-hidden] [ref=f1e740]: 📍
+                  - generic [ref=f1e741]:
+                    - generic [ref=f1e742]: Guwahati, Assam
+                    - generic [ref=f1e743]: Regional Logistics Hub
+                - listitem [ref=f1e744]:
+                  - generic [aria-hidden] [ref=f1e745]: 🛣️
+                  - generic [ref=f1e746]:
+                    - generic [ref=f1e747]: Guwahati–Tawang
+                    - generic [ref=f1e748]: NH-27 / NH-13 Corridor
+                - listitem [ref=f1e749]:
+                  - generic [aria-hidden] [ref=f1e750]: 🕒
+                  - generic [ref=f1e751]:
+                    - generic [ref=f1e752]: IST (UTC +5:30)
+                    - generic [ref=f1e753]: Operational Hours
+          - generic [ref=f1e754]:
+            - generic [ref=f1e755]: © 2026 RouteX · Road network data © OpenStreetMap contributors
+            - generic [ref=f1e756]: Built for accessibility & logistical resilience in Northeast India.

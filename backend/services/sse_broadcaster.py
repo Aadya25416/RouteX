@@ -129,8 +129,24 @@ class SSEBroadcaster:
 
         if role == "driver":
             # Drivers always receive corridor-wide incident, road, and weather events for road safety
-            if event_type.startswith(("incident.", "road.", "weather.", "alert.")):
+            if event_type.startswith(("incident.", "road.", "weather.")):
                 return True
+
+            # For alert events, restrict strictly to driver's user_id or active trip/vehicle
+            if event_type.startswith("alert."):
+                rec_user_id = str(payload.get("recipient_user_id") or "")
+                rec_role = str(payload.get("recipient_role") or "")
+                details = payload.get("details") or {}
+                ev_trip_id = str(details.get("trip_id") or payload.get("trip_id") or "")
+                ev_vehicle_id = str(details.get("vehicle_id") or payload.get("vehicle_id") or "")
+
+                if rec_user_id and rec_user_id == str(sub.user_id):
+                    return True
+                if ev_trip_id and ev_trip_id in sub.authorized_trip_ids:
+                    return True
+                if ev_vehicle_id and ev_vehicle_id in sub.authorized_vehicle_ids:
+                    return True
+                return False
 
             # For vehicle telemetry updates, restrict strictly to driver's assigned vehicle/trip
             if event_type.startswith("vehicle."):
@@ -194,6 +210,7 @@ class SSEBroadcaster:
             settings.REDIS_STREAM_VEHICLES,
             settings.REDIS_STREAM_TRIPS,
             settings.REDIS_STREAM_EVIDENCE,
+            settings.REDIS_STREAM_ALERTS,
         ]
         # Start reading new events from Redis
         last_ids = {s: "$" for s in stream_keys}

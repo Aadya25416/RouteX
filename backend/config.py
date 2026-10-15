@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     REDIS_STREAM_EVIDENCE: str = "events:evidence"
     REDIS_STREAM_VEHICLES: str = "events:vehicles"
     REDIS_STREAM_TRIPS: str = "events:trips"
+    REDIS_STREAM_ALERTS: str = "events:alerts"
 
     # Weather Ingestion (Open-Meteo)
     OPEN_METEO_API_URL: str = "https://api.open-meteo.com/v1/forecast"
