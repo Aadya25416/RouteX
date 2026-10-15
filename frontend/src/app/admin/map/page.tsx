@@ -5,11 +5,16 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { GUWAHATI_TAWANG_CORRIDOR_COORDS } from "@/data/driverData";
-import { getStatusColor } from "@/components/RoadMap";
-import type { BackendInfoResponse, RoadFeatureCollection, RoadFeatureProperties } from "@/types/roads";
+import type {
+  BackendInfoResponse,
+  RoadFeatureCollection,
+  RoadFeatureProperties,
+  RoadRiskItem,
+  RoadRiskListResponse,
+} from "@/types/roads";
+import { getStatusColor, type VehicleMarkerData } from "@/components/RoadMap";
 import { api } from "@/lib/api";
 import { connectEventStream } from "@/lib/events";
-import type { VehicleMarkerData } from "@/components/RoadMap";
 
 interface VehicleItem {
   id: string;
@@ -42,6 +47,7 @@ export default function AdminLiveMapPage() {
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
   const [vehicleMarkers, setVehicleMarkers] = useState<Map<string, VehicleMarkerData>>(new Map());
   const [liveUpdateNotice, setLiveUpdateNotice] = useState<string | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -52,9 +58,43 @@ export default function AdminLiveMapPage() {
       })
       .catch(() => {});
 
-    api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500")
-      .then((data) => {
-        if (isMounted) setRoadsData(data);
+    // Fetch road GeoJSON and risk intelligence simultaneously, merging risk fields
+    Promise.all([
+      api.get<RoadFeatureCollection>("/api/v1/roads/geojson?limit=500"),
+      api.get<RoadRiskListResponse>("/api/v1/risk?limit=500").catch(() => null),
+    ])
+      .then(([geojson, riskRes]) => {
+        if (!isMounted) return;
+        if (riskRes?.items && geojson?.features) {
+          const riskMap = new Map(riskRes.items.map((r) => [r.road_segment_id, r]));
+          const mergedFeatures = geojson.features.map((f) => {
+            const r = riskMap.get(f.properties.id);
+            if (r) {
+              return {
+                ...f,
+                properties: {
+                  ...f.properties,
+                  status: r.status,
+                  safety_score: r.safety_score,
+                  disruption_probability: r.disruption_probability,
+                  score_confidence: r.score_confidence,
+                  score_type: r.score_type,
+                  model_name: r.model_name,
+                  model_version: r.model_version,
+                  reason_codes: r.reason_codes,
+                  is_stale: r.is_stale,
+                  is_unknown: r.is_unknown,
+                  score_updated_at: r.score_updated_at,
+                  score_valid_until: r.score_valid_until,
+                },
+              };
+            }
+            return f;
+          });
+          setRoadsData({ ...geojson, features: mergedFeatures });
+        } else {
+          setRoadsData(geojson);
+        }
       })
       .catch(() => {});
 
@@ -132,6 +172,55 @@ export default function AdminLiveMapPage() {
             .catch(() => {});
           setLiveUpdateNotice(`Road segment ${event.payload?.segment_id || ""} updated to ${event.payload?.status || ""}`);
           setTimeout(() => setLiveUpdateNotice(null), 5000);
+        } else if (event.event_type === "road.risk_updated") {
+          const p = event.payload;
+          setRoadsData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              features: prev.features.map((f) => {
+                if (f.properties.id === p.road_segment_id) {
+                  const updated: RoadFeatureProperties = {
+                    ...f.properties,
+                    status: p.status,
+                    safety_score: p.safety_score,
+                    disruption_probability: p.disruption_probability,
+                    score_confidence: p.score_confidence,
+                    score_type: p.score_type,
+                    model_version: p.model_version,
+                    reason_codes: p.reason_codes,
+                    is_stale: false,
+                    is_unknown: false,
+                    score_updated_at: new Date().toISOString(),
+                    score_valid_until: p.valid_until,
+                  };
+                  return { ...f, properties: updated };
+                }
+                return f;
+              }),
+            };
+          });
+          setSelectedRoad((prev) => {
+            if (prev && prev.id === p.road_segment_id) {
+              return {
+                ...prev,
+                status: p.status,
+                safety_score: p.safety_score,
+                disruption_probability: p.disruption_probability,
+                score_confidence: p.score_confidence,
+                score_type: p.score_type,
+                model_version: p.model_version,
+                reason_codes: p.reason_codes,
+                is_stale: false,
+                is_unknown: false,
+                score_updated_at: new Date().toISOString(),
+                score_valid_until: p.valid_until,
+              };
+            }
+            return prev;
+          });
+          setLiveUpdateNotice(`ML Risk updated for ${p.road_segment_id}: ${p.status} (Safety: ${p.safety_score}/100)`);
+          setTimeout(() => setLiveUpdateNotice(null), 5000);
         } else if (event.event_type === "trip.rerouted") {
           setLiveUpdateNotice(`Trip ${event.payload?.trip_id?.slice(0, 8)} rerouted (${event.payload?.reason || "hazard bypass"})`);
           setTimeout(() => setLiveUpdateNotice(null), 6000);
@@ -178,15 +267,51 @@ export default function AdminLiveMapPage() {
     type: "landslide",
   };
 
+  const handleEvaluateRisk = async () => {
+    if (!activeSegment?.id) return;
+    setIsEvaluating(true);
+    try {
+      const res = await api.post<RoadRiskItem>("/api/v1/risk/evaluate", {
+        road_segment_id: activeSegment.id,
+      });
+      const updated: RoadFeatureProperties = {
+        ...activeSegment,
+        status: res.status,
+        safety_score: res.safety_score,
+        disruption_probability: res.disruption_probability,
+        score_confidence: res.score_confidence,
+        score_type: res.score_type,
+        model_version: res.model_version,
+        reason_codes: res.reason_codes,
+        is_stale: res.is_stale,
+        is_unknown: res.is_unknown,
+        score_updated_at: res.score_updated_at,
+      };
+      setSelectedRoad(updated);
+      setLiveUpdateNotice(`Re-evaluated segment ${activeSegment.id}: ${res.status} (Safety ${res.safety_score}/100)`);
+      setTimeout(() => setLiveUpdateNotice(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error evaluating risk";
+      setLiveUpdateNotice(`Re-evaluation failed: ${msg}`);
+      setTimeout(() => setLiveUpdateNotice(null), 5000);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const isStale = Boolean(activeSegment.is_stale);
+  const isUnknown = activeSegment.status === "UNKNOWN" || Boolean(activeSegment.is_unknown);
+  const isAuthoritative = activeSegment.score_type === "authoritative_incident" || (activeSegment.status === "BLOCKED" && (activeSegment.reason_codes || []).some(r => r.includes("AUTHORITATIVE") || r.includes("incident_")));
+
   return (
     <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-80px)] w-full gap-3">
         {/* Top Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-extrabold text-[#193B32]">Live Map &amp; Road Network</h1>
+            <h1 className="text-lg font-extrabold text-[#193B32]">Live Map &amp; ML Road Risk</h1>
             <p className="text-xs text-[#71877D]">
-              Explore and manage canonical road segments across the corridor
+              Real-time road safety scoring, XGBoost risk predictions &amp; fleet movements
             </p>
           </div>
 
@@ -261,14 +386,14 @@ export default function AdminLiveMapPage() {
             {/* Floating Road Status Legend */}
             <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-lg border border-[#DCE5D8] text-xs space-y-1">
               <span className="text-[10px] font-bold text-[#71877D] uppercase tracking-wider block mb-1">
-                Status Legend
+                Risk &amp; Status Legend
               </span>
               <div className="flex items-center gap-3 text-[11px] font-medium">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#16A779]" /> Open</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#16A779]" /> Safe (&gt;80)</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F4B64A]" /> At Risk</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F07838]" /> Restricted</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#DC4848]" /> Blocked</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#89939A]" /> Unknown</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#89939A]" /> Unknown/Stale</span>
               </div>
             </div>
           </div>
@@ -295,6 +420,25 @@ export default function AdminLiveMapPage() {
                   {activeSegment.status}
                 </span>
               </div>
+
+              {/* Assessment Governance Banner */}
+              {isAuthoritative && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-900 text-[11px] leading-snug">
+                  🛡️ <strong>Authoritative Incident Precedence:</strong> Segment closure is enforced by an active verified incident and cannot be overridden by model scores.
+                </div>
+              )}
+
+              {isStale && !isAuthoritative && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-snug">
+                  ⏳ <strong>Stale Risk Assessment:</strong> Previous prediction horizon has expired. Re-evaluation recommended.
+                </div>
+              )}
+
+              {isUnknown && !isAuthoritative && (
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] leading-snug">
+                  ⚠️ <strong>Unverified Status:</strong> Operational status is UNKNOWN. Per PRD policy, unknown segments are never treated as safe.
+                </div>
+              )}
 
               {/* Attributes Grid */}
               <div className="space-y-2.5 text-xs">
@@ -329,11 +473,36 @@ export default function AdminLiveMapPage() {
                     <span className="text-[11px] text-[#71877D] block">Disruption Prob.</span>
                     <span className="font-bold text-[#193B32]">
                       {activeSegment.disruption_probability != null
-                        ? `${(activeSegment.disruption_probability * 100).toFixed(0)}%`
-                        : "None"}
+                        ? `${(activeSegment.disruption_probability * 100).toFixed(1)}%`
+                        : "N/A"}
                     </span>
                   </div>
                 </div>
+
+                {activeSegment.model_version && (
+                  <div className="pt-2 border-t border-[#E8EFE5]">
+                    <span className="text-[11px] text-[#71877D] block">Model Pipeline</span>
+                    <span className="font-mono text-[11px] text-[#193B32]">
+                      v{activeSegment.model_version} (Unified XGBoost)
+                    </span>
+                  </div>
+                )}
+
+                {activeSegment.reason_codes && activeSegment.reason_codes.length > 0 && (
+                  <div className="pt-2 border-t border-[#E8EFE5]">
+                    <span className="text-[11px] text-[#71877D] block mb-1">Contributing Factors</span>
+                    <div className="flex flex-wrap gap-1">
+                      {activeSegment.reason_codes.map((rc, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FAFBF7] border border-[#DCE5D8] text-[#193B32]"
+                        >
+                          {rc}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-2.5 rounded-xl bg-[#FAFBF7] border border-[#DCE5D8] text-[11px] text-[#71877D]">
                   <strong className="text-[#193B32] block mb-0.5">Canonical PostGIS Geometry</strong>
@@ -346,8 +515,24 @@ export default function AdminLiveMapPage() {
             <div className="pt-4 border-t border-[#E8EFE5] flex flex-col gap-2">
               <button
                 type="button"
+                onClick={handleEvaluateRisk}
+                disabled={isEvaluating}
+                className="w-full py-2.5 px-4 bg-[#16A779] hover:bg-[#128a63] disabled:opacity-50 text-white rounded-full text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              >
+                {isEvaluating ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Evaluating Risk...</span>
+                  </>
+                ) : (
+                  <span>Re-evaluate ML Risk</span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowUpdateModal(true)}
-                className="w-full py-2.5 px-4 bg-[#12432A] hover:bg-[#0b2f1c] text-white rounded-full text-xs font-bold transition-colors"
+                className="w-full py-2 px-4 bg-[#12432A] hover:bg-[#0b2f1c] text-white rounded-full text-xs font-bold transition-colors"
               >
                 Update Status
               </button>

@@ -22,6 +22,8 @@ export interface RouteXEvent<T = any> {
     | "incident.rejected"
     | "incident.resolved"
     | "road.status_changed"
+    | "road.risk_updated"
+    | "evidence.ml_result"
     | "weather.updated"
     | "alert.created"
     | "alert.acknowledged";

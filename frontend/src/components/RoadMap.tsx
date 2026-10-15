@@ -219,7 +219,8 @@ export default function RoadMap({
         }
 
         const statusColor = getStatusColor(props.status);
-        const isUnknown = props.status === "UNKNOWN";
+        const isUnknown = props.status === "UNKNOWN" || Boolean(props.is_unknown);
+        const isStale = Boolean(props.is_stale);
 
         const disruptionText =
           props.disruption_probability != null && !isNaN(Number(props.disruption_probability))
@@ -236,8 +237,12 @@ export default function RoadMap({
             ? (Number(props.length_m) / 1000).toFixed(2)
             : "Unknown";
 
+        const reasonsList = props.reason_codes && props.reason_codes.length > 0
+          ? props.reason_codes.slice(0, 3).map(r => `<span style="display:inline-block;background:#f3f4f6;color:#374151;padding:1px 5px;border-radius:3px;font-size:10px;margin:1px 2px;">${r}</span>`).join("")
+          : "";
+
         const popupHtml = `
-          <div style="font-family: inherit; font-size: 13px; min-width: 240px; color: #1f2937; line-height: 1.4;">
+          <div style="font-family: inherit; font-size: 13px; min-width: 250px; color: #1f2937; line-height: 1.4;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb;">
               <strong style="font-size: 14px; color: #111827;">${props.name || "Unnamed Road"}</strong>
               <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; color: white; background-color: ${statusColor};">
@@ -259,23 +264,46 @@ export default function RoadMap({
                 <td style="text-align: right; color: #374151;">${lengthKm} km (${Math.round(Number(props.length_m || 0))} m)</td>
               </tr>
               <tr>
-                <td style="color: #6b7280; padding: 2px 0;">Traffic Direction:</td>
-                <td style="text-align: right; color: #374151;">${props.oneway ? "One-way" : "Two-way"}</td>
-              </tr>
-              <tr>
                 <td style="color: #6b7280; padding: 2px 0;">Safety Score:</td>
-                <td style="text-align: right; font-weight: 600; color: #111827;">${safetyScoreText}</td>
+                <td style="text-align: right; font-weight: 700; color: #111827;">${safetyScoreText}</td>
               </tr>
               <tr>
-                <td style="color: #6b7280; padding: 2px 0;">Disruption Probability:</td>
-                <td style="text-align: right; font-weight: 600; color: #111827;">${disruptionText}</td>
+                <td style="color: #6b7280; padding: 2px 0;">Disruption Prob:</td>
+                <td style="text-align: right; font-weight: 700; color: #111827;">${disruptionText}</td>
               </tr>
+              ${
+                props.model_version
+                  ? `<tr>
+                      <td style="color: #6b7280; padding: 2px 0;">Model Version:</td>
+                      <td style="text-align: right; font-family: monospace; font-size: 10px; color: #4b5563;">${props.model_version}</td>
+                    </tr>`
+                  : ""
+              }
             </table>
+
+            ${
+              reasonsList
+                ? `<div style="margin-bottom: 6px;">
+                    <span style="font-size: 10px; color: #6b7280; display: block; margin-bottom: 2px;">Contributing Factors:</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 2px;">${reasonsList}</div>
+                  </div>`
+                : ""
+            }
+
+            ${
+              isStale
+                ? `
+              <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 4px 6px; font-size: 10px; color: #92400e; margin-top: 4px;">
+                ⏳ <strong>Stale Assessment:</strong> Exceeded freshness horizon. Re-evaluating.
+              </div>
+            `
+                : ""
+            }
 
             ${
               isUnknown
                 ? `
-              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #991b1b;">
+              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #991b1b; margin-top: 4px;">
                 ⚠️ <strong>UNKNOWN status:</strong> Operational status is unverified. Never assume safe or open.
               </div>
             `
@@ -332,14 +360,16 @@ export default function RoadMap({
       }
     });
 
+    const vehicleMap = vehicleMarkersMapRef.current;
+
     return () => {
       if (activePopupRef.current) {
         activePopupRef.current.remove();
       }
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
-      vehicleMarkersMapRef.current.forEach(({ marker }) => marker.remove());
-      vehicleMarkersMapRef.current.clear();
+      vehicleMap.forEach(({ marker }) => marker.remove());
+      vehicleMap.clear();
       map.remove();
       mapInstanceRef.current = null;
     };

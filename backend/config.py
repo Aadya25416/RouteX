@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     REDIS_STREAM_VEHICLES: str = "events:vehicles"
     REDIS_STREAM_TRIPS: str = "events:trips"
     REDIS_STREAM_ALERTS: str = "events:alerts"
+    REDIS_STREAM_RISK: str = "events:risk"
 
     # Weather Ingestion (Open-Meteo)
     OPEN_METEO_API_URL: str = "https://api.open-meteo.com/v1/forecast"
@@ -81,6 +82,12 @@ class Settings(BaseSettings):
     # ML Processing Contract
     ML_CLAIM_TIMEOUT_MINUTES: int = 15
     ML_SERVICE_ROLE: str = "ml_service"
+    ML_WORKER_ID: str = "worker-routex-01"
+    ML_YOLO_WEIGHTS_PATH: str = "ml/models/best.pt"
+    ML_XGBOOST_RISK_PATH: str = "ml/models/xgboost/landslide_risk_xgboost.json"
+    ML_XGBOOST_DELAY_PATH: str = "ml/models/xgboost/travel_delay_xgboost.json"
+    ML_RISK_HORIZON_MINUTES: int = 360
+    ML_RISK_STALE_MINUTES: int = 120
 
     # Satellite Ingestion Adapter
     SATELLITE_PROVIDER: str = "copernicus_sentinel2"
